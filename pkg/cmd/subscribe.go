@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"ethan/pkg/mstoken"
 	"github.com/gptscript-ai/go-gptscript"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -22,7 +23,7 @@ import (
 type Subscribe struct{}
 
 func (s *Subscribe) Run(cmd *cobra.Command, args []string) error {
-	cred := NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
+	cred := mstoken.NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
 	client, err := msgraphsdk.NewGraphServiceClientWithCredentials(cred, []string{})
 	if err != nil {
 		return err

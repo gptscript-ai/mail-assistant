@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"ethan/pkg/mstoken"
 	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -15,7 +16,7 @@ import (
 type Schedule struct{}
 
 func (s *Schedule) Run(cmd *cobra.Command, _ []string) error {
-	cred := NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
+	cred := mstoken.NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
 	client, err := msgraphsdk.NewGraphServiceClientWithCredentials(cred, []string{})
 	if err != nil {
 		return err

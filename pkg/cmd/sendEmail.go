@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"ethan/pkg/mstoken"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
@@ -13,7 +14,7 @@ import (
 type SendEmail struct{}
 
 func (s *SendEmail) Run(cmd *cobra.Command, args []string) error {
-	cred := NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
+	cred := mstoken.NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
 	client, err := msgraphsdk.NewGraphServiceClientWithCredentials(cred, []string{})
 	if err != nil {
 		return err

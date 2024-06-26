@@ -1,4 +1,3 @@
-cred: ./tool.gpt as token
 tools: get-contact, send-email, check-availability, subscribe, schedule
 chat: true
 
