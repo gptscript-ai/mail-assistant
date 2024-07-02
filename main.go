@@ -1,7 +1,7 @@
 package main
 
 import (
-	"meeting-schedulinator/pkg/cmd"
+	"ethan/pkg/cmd"
 
 	acmd "github.com/acorn-io/cmd"
 )

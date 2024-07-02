@@ -7,7 +7,7 @@ import (
 
 	"ethan/pkg/db"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func Middleware(next http.HandlerFunc) http.HandlerFunc {
@@ -35,7 +35,12 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Set custom headers
-		r.Header.Set("X-User-ID", user.ID.String())
+		v, err := user.ID.Value()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		r.Header.Set("X-User-ID", v.(string))
 		r.Header.Set("X-User-Name", user.Name)
 		r.Header.Set("X-User-Email", user.Email)
 
@@ -51,7 +56,7 @@ func getTokenFromRequest(r *http.Request) string {
 	}
 
 	// Check cookies
-	cookie, err := r.Cookie("JwtTokenName")
+	cookie, err := r.Cookie(JwtTokenName)
 	if err == nil {
 		return cookie.Value
 	}
@@ -64,8 +69,8 @@ func getUserFromTokenClaims(claims jwt.MapClaims) (user db.User, err error) {
 	if err != nil {
 		return db.User{}, err
 	}
-	uid, err := uuid.Parse(sub)
-	if err != nil {
+	var uid pgtype.UUID
+	if err := uid.Scan(sub); err != nil {
 		return db.User{}, errors.New("invalid user id, not a uuid")
 	}
 	name, ok := claims["name"]

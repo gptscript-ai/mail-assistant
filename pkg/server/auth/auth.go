@@ -3,8 +3,8 @@ package auth
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,7 +15,8 @@ import (
 	"ethan/pkg/db"
 	"ethan/pkg/mstoken"
 	"github.com/golang-jwt/jwt/v5"
-
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/lib/pq"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/sirupsen/logrus"
@@ -29,8 +30,8 @@ var (
 	oauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("MICROSOFT_CLIENT_ID"),
 		ClientSecret: os.Getenv("MICROSOFT_CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:8080/auth/callback",
-		Scopes:       []string{"User.Read", "Mail.Read", "Mail.Send", "Contacts.Read", "Calendars.ReadWrite"},
+		RedirectURL:  "http://localhost:8080/api/auth/callback",
+		Scopes:       []string{"User.Read", "Mail.ReadWrite", "Mail.Send", "Contacts.Read", "Calendars.ReadWrite"},
 		Endpoint:     microsoft.AzureADEndpoint(os.Getenv("MICROSOFT_TENANT_ID")),
 	}
 	jwtKey = []byte(os.Getenv("MICROSOFT_JWT_KEY"))
@@ -101,6 +102,28 @@ func (h *Handler) HandleMicrosoftLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
+func (h *Handler) HandleMe(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-User-ID")
+	var uid pgtype.UUID
+	if err := uid.Scan(userID); err != nil {
+		fmt.Fprint(w, fmt.Errorf("invalid user id: %s", userID))
+		return
+	}
+
+	user, err := h.queries.GetUser(r.Context(), uid)
+	if err != nil {
+		fmt.Fprint(w, fmt.Errorf("failed to get user: %s", userID))
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		fmt.Fprint(w, fmt.Errorf("failed to encode user: %s", userID))
+		return
+	}
+
+	return
+}
+
 func (h *Handler) HandleMicrosoftCallback(w http.ResponseWriter, r *http.Request) {
 	user, err := h.saveUserInfo(r.Context(), r.FormValue("state"), r.FormValue("code"))
 	if err != nil {
@@ -121,13 +144,13 @@ func (h *Handler) HandleMicrosoftCallback(w http.ResponseWriter, r *http.Request
 		Value:    jwtToken,
 		Expires:  time.Now().Add(time.Hour),
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   false,
+		SameSite: http.SameSiteDefaultMode,
 		Path:     "/",
 	}
 
 	http.SetCookie(w, cookie)
-	w.WriteHeader(http.StatusOK)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	return
 }
 
@@ -153,34 +176,33 @@ func (h *Handler) saveUserInfo(ctx context.Context, state string, code string) (
 	}
 
 	email := me.GetMail()
-	t := sql.NullTime{}
+	t := pgtype.Timestamptz{}
 	if err := t.Scan(token.Expiry); err != nil {
 		return db.User{}, fmt.Errorf("failed to scan token for expiry time: %w", err)
 	}
 
 	user, err := h.queries.GetUserFromEmail(ctx, *email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			newUser, err := h.queries.CreateUser(ctx, db.CreateUserParams{
 				Name:         *me.GetDisplayName(),
 				Email:        *email,
-				RefreshToken: token.RefreshToken,
 				ExpireAt:     t,
 				Token:        token.AccessToken,
 			})
 			if err != nil {
 				return db.User{},fmt.Errorf("failed to create user: %w", err)
 			}
-			logrus.Infof("User %v created", newUser.ID)
+			logrus.Info("User created")
 			return newUser, nil
 		}
 		return db.User{}, fmt.Errorf("failed to get user: %w", err)
 	} else {
-		if err := h.queries.UpdateUserToken(ctx, db.UpdateUserTokenParams{
+		if err := h.queries.UpdateUser(ctx, db.UpdateUserParams{
 			ID:           user.ID,
 			Token:        token.AccessToken,
-			RefreshToken: token.RefreshToken,
 			ExpireAt:     t,
+			SubscriptionID:  user.SubscriptionID,
 		}); err != nil {
 			return db.User{},fmt.Errorf("failed to update user token: %w", err)
 		}

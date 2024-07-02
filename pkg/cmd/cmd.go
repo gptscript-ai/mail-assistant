@@ -11,7 +11,6 @@ func New() *cobra.Command {
 		new(GetContact),
 		new(Cred),
 		new(SendEmail),
-		new(Subscribe),
 		new(Schedule),
 		new(CheckSchedule),
 	)

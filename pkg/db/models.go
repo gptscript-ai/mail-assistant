@@ -5,23 +5,35 @@
 package db
 
 import (
-	"database/sql"
-
-	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Message struct {
+	ID        pgtype.UUID
+	MessageID *string
+	TaskID    pgtype.UUID
+	Content   *string
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Read      *bool
+}
+
 type Task struct {
-	ID     uuid.UUID
-	UserID uuid.NullUUID
-	State  pqtype.NullRawMessage
+	ID             pgtype.UUID
+	Name           string
+	Description    string
+	CreatedAt      pgtype.Timestamptz
+	UserID         pgtype.UUID
+	ConversationID *string
+	State          []byte
 }
 
 type User struct {
-	ID           uuid.UUID
-	Name         string
-	Email        string
-	Token        string
-	RefreshToken string
-	ExpireAt     sql.NullTime
+	ID                   pgtype.UUID
+	Name                 string
+	Email                string
+	Token                string
+	SubscriptionID       *string
+	SubscriptionExpireAt pgtype.Timestamptz
+	ExpireAt             pgtype.Timestamptz
 }

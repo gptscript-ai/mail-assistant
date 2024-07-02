@@ -7,56 +7,93 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createMessage = `-- name: CreateMessage :exec
+INSERT INTO messages (
+    message_id, task_id, content, user_id
+) VALUES (
+    $1, $2, $3, $4
+)
+RETURNING id, message_id, task_id, content, user_id, created_at, read
+`
+
+type CreateMessageParams struct {
+	MessageID *string
+	TaskID    pgtype.UUID
+	Content   *string
+	UserID    pgtype.UUID
+}
+
+func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) error {
+	_, err := q.db.Exec(ctx, createMessage,
+		arg.MessageID,
+		arg.TaskID,
+		arg.Content,
+		arg.UserID,
+	)
+	return err
+}
 
 const createTask = `-- name: CreateTask :one
 INSERT INTO tasks (
-    user_id, state
+    user_id, name, state, description
 ) VALUES (
-    $1, $2
+    $1, $2, $3, $4
 )
-RETURNING id, user_id, state
+RETURNING id, name, description, created_at, user_id, conversation_id, state
 `
 
 type CreateTaskParams struct {
-	UserID uuid.NullUUID
-	State  pqtype.NullRawMessage
+	UserID      pgtype.UUID
+	Name        string
+	State       []byte
+	Description string
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
-	row := q.db.QueryRowContext(ctx, createTask, arg.UserID, arg.State)
+	row := q.db.QueryRow(ctx, createTask,
+		arg.UserID,
+		arg.Name,
+		arg.State,
+		arg.Description,
+	)
 	var i Task
-	err := row.Scan(&i.ID, &i.UserID, &i.State)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.ConversationID,
+		&i.State,
+	)
 	return i, err
 }
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-    name, token, email, refresh_token, expire_at
+    name, token, email, expire_at
 ) VALUES (
-             $1, $2, $3, $4, $5
+             $1, $2, $3, $4
          )
-RETURNING id, name, email, token, refresh_token, expire_at
+RETURNING id, name, email, token, subscription_id, subscription_expire_at, expire_at
 `
 
 type CreateUserParams struct {
-	Name         string
-	Token        string
-	Email        string
-	RefreshToken string
-	ExpireAt     sql.NullTime
+	Name     string
+	Token    string
+	Email    string
+	ExpireAt pgtype.Timestamptz
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.Name,
 		arg.Token,
 		arg.Email,
-		arg.RefreshToken,
 		arg.ExpireAt,
 	)
 	var i User
@@ -65,7 +102,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Name,
 		&i.Email,
 		&i.Token,
-		&i.RefreshToken,
+		&i.SubscriptionID,
+		&i.SubscriptionExpireAt,
 		&i.ExpireAt,
 	)
 	return i, err
@@ -76,8 +114,8 @@ DELETE FROM tasks
 WHERE id = $1
 `
 
-func (q *Queries) DeleteTask(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteTask, id)
+func (q *Queries) DeleteTask(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTask, id)
 	return err
 }
 
@@ -86,30 +124,111 @@ DELETE FROM users
 WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, id)
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
 	return err
 }
 
+const getMessageFromMessageID = `-- name: GetMessageFromMessageID :one
+SELECT id, message_id, task_id, content, user_id, created_at, read FROM messages
+WHERE message_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetMessageFromMessageID(ctx context.Context, messageID *string) (Message, error) {
+	row := q.db.QueryRow(ctx, getMessageFromMessageID, messageID)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.MessageID,
+		&i.TaskID,
+		&i.Content,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.Read,
+	)
+	return i, err
+}
+
+const getMessageFromUserID = `-- name: GetMessageFromUserID :many
+SELECT id, message_id, task_id, content, user_id, created_at, read FROM messages
+WHERE user_id = $1
+`
+
+func (q *Queries) GetMessageFromUserID(ctx context.Context, userID pgtype.UUID) ([]Message, error) {
+	rows, err := q.db.Query(ctx, getMessageFromUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.MessageID,
+			&i.TaskID,
+			&i.Content,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.Read,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTask = `-- name: GetTask :one
-SELECT id, user_id, state FROM tasks
+SELECT id, name, description, created_at, user_id, conversation_id, state FROM tasks
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
-	row := q.db.QueryRowContext(ctx, getTask, id)
+func (q *Queries) GetTask(ctx context.Context, id pgtype.UUID) (Task, error) {
+	row := q.db.QueryRow(ctx, getTask, id)
 	var i Task
-	err := row.Scan(&i.ID, &i.UserID, &i.State)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.ConversationID,
+		&i.State,
+	)
+	return i, err
+}
+
+const getTaskFromConversationID = `-- name: GetTaskFromConversationID :one
+SELECT id, name, description, created_at, user_id, conversation_id, state FROM tasks
+WHERE conversation_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetTaskFromConversationID(ctx context.Context, conversationID *string) (Task, error) {
+	row := q.db.QueryRow(ctx, getTaskFromConversationID, conversationID)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.ConversationID,
+		&i.State,
+	)
 	return i, err
 }
 
 const getTaskFromUserID = `-- name: GetTaskFromUserID :many
-SELECT id, user_id, state FROM tasks
+SELECT id, name, description, created_at, user_id, conversation_id, state FROM tasks
 WHERE user_id = $1
 `
 
-func (q *Queries) GetTaskFromUserID(ctx context.Context, userID uuid.NullUUID) ([]Task, error) {
-	rows, err := q.db.QueryContext(ctx, getTaskFromUserID, userID)
+func (q *Queries) GetTaskFromUserID(ctx context.Context, userID pgtype.UUID) ([]Task, error) {
+	rows, err := q.db.Query(ctx, getTaskFromUserID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,13 +236,18 @@ func (q *Queries) GetTaskFromUserID(ctx context.Context, userID uuid.NullUUID) (
 	var items []Task
 	for rows.Next() {
 		var i Task
-		if err := rows.Scan(&i.ID, &i.UserID, &i.State); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ConversationID,
+			&i.State,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -132,49 +256,71 @@ func (q *Queries) GetTaskFromUserID(ctx context.Context, userID uuid.NullUUID) (
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, email, token, refresh_token, expire_at FROM users
+SELECT id, name, email, token, subscription_id, subscription_expire_at, expire_at FROM users
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
+func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
 		&i.Token,
-		&i.RefreshToken,
+		&i.SubscriptionID,
+		&i.SubscriptionExpireAt,
 		&i.ExpireAt,
 	)
 	return i, err
 }
 
 const getUserFromEmail = `-- name: GetUserFromEmail :one
-SELECT id, name, email, token, refresh_token, expire_at FROM users
+SELECT id, name, email, token, subscription_id, subscription_expire_at, expire_at FROM users
 WHERE email = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserFromEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserFromEmail, email)
+	row := q.db.QueryRow(ctx, getUserFromEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
 		&i.Token,
-		&i.RefreshToken,
+		&i.SubscriptionID,
+		&i.SubscriptionExpireAt,
+		&i.ExpireAt,
+	)
+	return i, err
+}
+
+const getUserFromSubscriptionID = `-- name: GetUserFromSubscriptionID :one
+SELECT id, name, email, token, subscription_id, subscription_expire_at, expire_at FROM users
+WHERE subscription_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserFromSubscriptionID(ctx context.Context, subscriptionID *string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserFromSubscriptionID, subscriptionID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Token,
+		&i.SubscriptionID,
+		&i.SubscriptionExpireAt,
 		&i.ExpireAt,
 	)
 	return i, err
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, user_id, state FROM tasks
+SELECT id, name, description, created_at, user_id, conversation_id, state FROM tasks
 `
 
 func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
-	rows, err := q.db.QueryContext(ctx, listTasks)
+	rows, err := q.db.Query(ctx, listTasks)
 	if err != nil {
 		return nil, err
 	}
@@ -182,13 +328,18 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 	var items []Task
 	for rows.Next() {
 		var i Task
-		if err := rows.Scan(&i.ID, &i.UserID, &i.State); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ConversationID,
+			&i.State,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -197,12 +348,12 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email, token, refresh_token, expire_at FROM users
+SELECT id, name, email, token, subscription_id, subscription_expire_at, expire_at FROM users
 ORDER BY name
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
+	rows, err := q.db.Query(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -215,15 +366,13 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Name,
 			&i.Email,
 			&i.Token,
-			&i.RefreshToken,
+			&i.SubscriptionID,
+			&i.SubscriptionExpireAt,
 			&i.ExpireAt,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -231,43 +380,86 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const updateTask = `-- name: UpdateTask :exec
+const updateMessageRead = `-- name: UpdateMessageRead :exec
+UPDATE messages
+set read = $2
+WHERE id = $1
+`
+
+type UpdateMessageReadParams struct {
+	ID   pgtype.UUID
+	Read *bool
+}
+
+func (q *Queries) UpdateMessageRead(ctx context.Context, arg UpdateMessageReadParams) error {
+	_, err := q.db.Exec(ctx, updateMessageRead, arg.ID, arg.Read)
+	return err
+}
+
+const updateTaskConversationID = `-- name: UpdateTaskConversationID :exec
+UPDATE tasks
+set conversation_id = $2
+WHERE id = $1
+`
+
+type UpdateTaskConversationIDParams struct {
+	ID             pgtype.UUID
+	ConversationID *string
+}
+
+func (q *Queries) UpdateTaskConversationID(ctx context.Context, arg UpdateTaskConversationIDParams) error {
+	_, err := q.db.Exec(ctx, updateTaskConversationID, arg.ID, arg.ConversationID)
+	return err
+}
+
+const updateTaskState = `-- name: UpdateTaskState :exec
 UPDATE tasks
 set state = $2
 WHERE id = $1
 `
 
-type UpdateTaskParams struct {
-	ID    uuid.UUID
-	State pqtype.NullRawMessage
+type UpdateTaskStateParams struct {
+	ID    pgtype.UUID
+	State []byte
 }
 
-func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
-	_, err := q.db.ExecContext(ctx, updateTask, arg.ID, arg.State)
+func (q *Queries) UpdateTaskState(ctx context.Context, arg UpdateTaskStateParams) error {
+	_, err := q.db.Exec(ctx, updateTaskState, arg.ID, arg.State)
 	return err
 }
 
-const updateUserToken = `-- name: UpdateUserToken :exec
-UPDATE users
-set token = $2,
-    refresh_token = $3,
-    expire_at = $4
+const updateTaskStateToNull = `-- name: UpdateTaskStateToNull :exec
+UPDATE tasks
+set state = null
 WHERE id = $1
 `
 
-type UpdateUserTokenParams struct {
-	ID           uuid.UUID
-	Token        string
-	RefreshToken string
-	ExpireAt     sql.NullTime
+func (q *Queries) UpdateTaskStateToNull(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, updateTaskStateToNull, id)
+	return err
 }
 
-func (q *Queries) UpdateUserToken(ctx context.Context, arg UpdateUserTokenParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserToken,
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+set token = $2,
+    expire_at = $3,
+    subscription_id = $4
+WHERE id = $1
+`
+
+type UpdateUserParams struct {
+	ID             pgtype.UUID
+	Token          string
+	ExpireAt       pgtype.Timestamptz
+	SubscriptionID *string
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.Exec(ctx, updateUser,
 		arg.ID,
 		arg.Token,
-		arg.RefreshToken,
 		arg.ExpireAt,
+		arg.SubscriptionID,
 	)
 	return err
 }

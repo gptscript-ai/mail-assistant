@@ -1,17 +1,24 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
 	"ethan/pkg/mstoken"
+
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/spf13/cobra"
 )
 
 type SendEmail struct{}
+
+type emailOutput struct {
+	MessageID      string `json:"messageId"`
+	ConversationID string `json:"conversationId"`
+}
 
 func (s *SendEmail) Run(cmd *cobra.Command, args []string) error {
 	cred := mstoken.NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
@@ -20,16 +27,15 @@ func (s *SendEmail) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	requestBody := graphusers.NewItemSendmailSendMailPostRequestBody()
-	message := graphmodels.NewMessage()
+	requestBody := graphmodels.NewMessage()
 	subject := os.Getenv("EMAIL_SUBJECT")
-	message.SetSubject(&subject)
+	requestBody.SetSubject(&subject)
 	body := graphmodels.NewItemBody()
 	contentType := graphmodels.TEXT_BODYTYPE
 	body.SetContentType(&contentType)
 	content := os.Getenv("EMAIL_CONTENT")
 	body.SetContent(&content)
-	message.SetBody(body)
+	requestBody.SetBody(body)
 
 	var toRecipients []graphmodels.Recipientable
 	for _, r := range strings.Split(os.Getenv("EMAIL_RECIPIENT"), ",") {
@@ -42,13 +48,26 @@ func (s *SendEmail) Run(cmd *cobra.Command, args []string) error {
 		toRecipients = append(toRecipients, rep)
 	}
 
-	message.SetToRecipients(toRecipients)
-	requestBody.SetMessage(message)
-	saveToSentItems := true
-	requestBody.SetSaveToSentItems(&saveToSentItems)
+	requestBody.SetToRecipients(toRecipients)
 
-	if err := client.Me().SendMail().Post(cmd.Context(), requestBody, nil); err != nil {
+	message, err := client.Me().Messages().Post(cmd.Context(), requestBody, nil)
+	if err != nil {
 		return err
 	}
+
+	if err := client.Me().Messages().ByMessageId(*message.GetId()).Send().Post(cmd.Context(), nil); err != nil {
+		return err
+	}
+
+	o := emailOutput{
+		MessageID:      *message.GetId(),
+		ConversationID: *message.GetConversationId(),
+	}
+
+	data, err := json.Marshal(o)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }

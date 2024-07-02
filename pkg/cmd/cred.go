@@ -71,7 +71,6 @@ func (c *Cred) Run(cmd *cobra.Command, _ []string) error {
 	credential := credential{
 		Env: map[string]string{
 			"GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN": token.Token,
-			"NGROK_URL": "https://e9b6-174-72-112-87.ngrok-free.app",
 		},
 	}
 
