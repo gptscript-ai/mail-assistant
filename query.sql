@@ -16,17 +16,19 @@ ORDER BY name;
 
 -- name: CreateUser :one
 INSERT INTO users (
-    name, token, email, expire_at
+    name, token, refresh_token, email, expire_at
 ) VALUES (
-             $1, $2, $3, $4
+             $1, $2, $3, $4, $5
          )
 RETURNING *;
 
 -- name: UpdateUser :exec
 UPDATE users
 set token = $2,
-    expire_at = $3,
-    subscription_id = $4
+    refresh_token = $3,
+    expire_at = $4,
+    subscription_id = $5,
+    subscription_expire_at = $6
 WHERE id = $1;
 
 -- name: DeleteUser :exec
@@ -50,9 +52,9 @@ SELECT * FROM tasks;
 
 -- name: CreateTask :one
 INSERT INTO tasks (
-    user_id, name, state, description
+    user_id, name, state, description, tool_definition, context, message_id, message_body, context_ids
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING *;
 
@@ -69,6 +71,14 @@ WHERE id = $1;
 -- name: UpdateTaskConversationID :exec
 UPDATE tasks
 set conversation_id = $2
+WHERE id = $1;
+
+-- name: UpdateTask :exec
+UPDATE tasks
+SET name = $2,
+    description = $3,
+    context = $4,
+    context_ids = $5
 WHERE id = $1;
 
 -- name: DeleteTask :exec
@@ -95,3 +105,30 @@ WHERE user_id = $1;
 UPDATE messages
 set read = $2
 WHERE id = $1;
+
+-- name: CreateContext :one
+INSERT INTO contexts (
+    name, description, content, user_id
+) VALUES (
+    $1, $2, $3, $4
+)
+RETURNING *;
+
+-- name: ListContextsForUser :many
+SELECT * FROM contexts WHERE user_id = $1;
+
+-- name: UpdateContext :exec
+UPDATE contexts
+SET name = $2,
+    description = $3,
+    content = $4
+WHERE id = $1;
+
+-- name: DeleteContext :exec
+DELETE FROM contexts
+WHERE id = $1;
+
+-- name: GetContext :one
+SELECT * FROM contexts
+WHERE id = $1 LIMIT 1;
+

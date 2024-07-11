@@ -9,11 +9,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"slices"
-	"strings"
+	"sync"
 	"time"
 
 	"ethan/pkg/db"
+	"ethan/pkg/tool"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -25,10 +25,12 @@ import (
 )
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = 10 * time.Second
-	toolCallHeader = "<tool call>"
+	writeWait          = 10 * time.Second
+	pongWait           = 60 * time.Second
+	pingPeriod         = 10 * time.Second
+	toolCallHeader     = "<tool call>"
+	taskContext        = "task-context"
+	messageBodyContext = "message-body-context"
 )
 
 type Handler struct {
@@ -59,6 +61,9 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	taskParam.UserID = uid
+	if taskParam.ToolDefinition == nil {
+		taskParam.ToolDefinition = &tool.DefaultToolDef
+	}
 	task, err := h.queries.CreateTask(r.Context(), taskParam)
 	if err != nil {
 		logrus.Error(fmt.Errorf("failed to create task: %w", err))
@@ -93,7 +98,36 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
-	// todo
+	vars := mux.Vars(r)
+	var taskID pgtype.UUID
+	if err := taskID.Scan(vars["id"]); err != nil {
+		logrus.Error(fmt.Errorf("invalid task id: %s", vars["id"]))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var taskParam db.UpdateTaskParams
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		logrus.Error(fmt.Errorf("failed to fetch tasks from database: %w", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if len(data) != 0 {
+		if err := json.Unmarshal(data, &taskParam); err != nil {
+			logrus.Error(fmt.Errorf("failed to unmarshal tasks from request body: %w", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	taskParam.ID = taskID
+
+	if err := h.queries.UpdateTask(r.Context(), taskParam); err != nil {
+		logrus.Error(fmt.Errorf("failed to update task: %w", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	return
 }
 
@@ -188,18 +222,48 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
-	run, err := client.Run(ctx, "./copilot.gpt", gptscript.Options{
-		Prompt:        true,
-		IncludeEvents: true,
-		ChatState:     string(task.State),
-	})
+	tools, err := client.ParseTool(ctx, *task.ToolDefinition)
 	if err != nil {
-		logrus.Error(fmt.Errorf("failed to run gptscript within task: %w", err))
+		logrus.Error(fmt.Errorf("failed to parse tool definition: %w", err))
 		return
 	}
+
+	var toolDefs []gptscript.ToolDef
+	for _, tool := range tools {
+		toolRef := tool.ToolNode.Tool.ToolDef
+		toolRef.Arguments = tool.ToolNode.Tool.Arguments
+		toolDefs = append(toolDefs, toolRef)
+	}
+
+	if task.Context != nil {
+		toolDefs[0].Instructions += "\n" + fmt.Sprintf("You are provided with the following rules: %v\n", *task.Context)
+	}
+	for _, contextID := range task.ContextIds {
+		cont, err := h.queries.GetContext(ctx, contextID)
+		if err != nil {
+			logrus.Error(fmt.Errorf("failed to fetch context from database: %w", err))
+			return
+		}
+		toolDefs[0].Instructions += "\n" + fmt.Sprintf("%v\n", *cont.Content)
+	}
+
+	toolDefs[0].Instructions += "\n" + fmt.Sprintf("Current user: %v\n", user.Name)
+	toolDefs[0].Instructions += "\n" + fmt.Sprintf("Current time: %v\n", time.Now())
+
+	if task.MessageBody != nil {
+		toolDefs[0].Instructions += "\n" + fmt.Sprintf("You are provided with an existing email: %v\n", *task.MessageBody)
+	}
+
+	run, err := client.Evaluate(ctx, gptscript.Options{
+		Prompt:        true,
+		IncludeEvents: true,
+		DisableCache:  true,
+		ChatState:     string(task.State),
+	}, toolDefs...)
 	defer run.Close()
 
-	go ping(conn, run, cancel)
+	writeLock := &sync.Mutex{}
+	go ping(conn, run, writeLock, cancel)
 
 	for {
 		select {
@@ -226,10 +290,13 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 
+					writeLock.Lock()
 					if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 						logrus.Error(fmt.Errorf("failed to write message to client: %w", err))
+						writeLock.Unlock()
 						return
 					}
+					writeLock.Unlock()
 				}
 			}
 
@@ -259,7 +326,7 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 				}
 				if ret.Continuation != nil && ret.Continuation.State != nil {
 					for _, r := range ret.Continuation.State.Results {
-						if r.ToolID == "copilot.gpt:send-email" {
+						if r.ToolID == "inline:send-email" {
 							var out struct {
 								MessageID      string `json:"messageId"`
 								ConversationID string `json:"conversationId"`
@@ -284,7 +351,6 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 
 			messageType, m, err := conn.ReadMessage()
 			if err != nil {
-				logrus.Error(fmt.Errorf("failed to read websocket message: %w", err))
 				return
 			}
 
@@ -306,7 +372,7 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ping(conn *websocket.Conn, run *gptscript.Run, cancel context.CancelFunc) {
+func ping(conn *websocket.Conn, run *gptscript.Run, lock *sync.Mutex, cancel context.CancelFunc) {
 	ticker := time.NewTicker(pingPeriod)
 	defer ticker.Stop()
 
@@ -314,40 +380,16 @@ func ping(conn *websocket.Conn, run *gptscript.Run, cancel context.CancelFunc) {
 		select {
 		case <-ticker.C:
 			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			lock.Lock()
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				if errors.Is(err, websocket.ErrCloseSent) {
 					run.Close()
 					cancel()
 				}
+				lock.Unlock()
 				return
 			}
-		}
-	}
-}
-
-func render(run *gptscript.Run) string {
-	buf := &strings.Builder{}
-
-	if call, ok := run.ParentCallFrame(); ok {
-		printCall(buf, call, nil)
-	}
-
-	return buf.String()
-}
-
-func printCall(buf *strings.Builder, call gptscript.CallFrame, stack []string) {
-	if slices.Contains(stack, call.ID) {
-		return
-	}
-
-	for _, output := range call.Output {
-		content, _, _ := strings.Cut(output.Content, toolCallHeader)
-		if content != "" {
-			if strings.HasPrefix(call.Tool.Instructions, "#!") {
-				buf.WriteString(strings.TrimSpace(content))
-			} else {
-				buf.WriteString(content)
-			}
+			lock.Unlock()
 		}
 	}
 }

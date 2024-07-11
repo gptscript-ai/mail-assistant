@@ -18,7 +18,6 @@ WORKDIR /app
 COPY --from=builder /copilot-server /usr/bin/copilot-server
 COPY --from=builder /gem-copilot /usr/bin/gem-copilot
 COPY --from=builder /usr/local/bin/gptscript /usr/bin/gptscript
-COPY --from=builder /copilot.gpt /app/copilot.gpt
 
 # Make the binaries executable
 RUN chmod +x /usr/bin/gem-copilot /usr/bin/copilot-server

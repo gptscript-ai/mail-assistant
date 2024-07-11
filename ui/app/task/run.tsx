@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, TextField, Button, Typography } from '@mui/material';
 import Stack from '@mui/material/Stack';
-import Layout from '../tasks/layout';
 import Card from '@mui/material/Card';
 import { useRouter } from 'next/navigation';
 import Messages from '@/components/message/message';
@@ -97,8 +96,6 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
             frame: CallFrame;
             state: Record<string, CallFrame>;
         }) => {
-            console.log('frame', frame);
-            console.log('state', state);
             const isMainContent =
                 frame.output &&
                 frame.output.length > 0 &&
@@ -110,7 +107,6 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                 : '';
             if (!content) return;
             setGenerating(true);
-            console.log(latestBotMessageIndex.current);
             if (
                 content === 'Waiting for model response...' &&
                 latestBotMessageIndex.current !== -1 &&
@@ -228,40 +224,6 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
         setMessage('');
     };
 
-    // useEffect(() => {
-    //     console.log(task);
-    //     if (task?.State) {
-    //         const state = JSON.parse(
-    //             Buffer.from(task.State, 'base64').toString('utf-8')
-    //         );
-    //         let messagesFromState =
-    //             state?.continuation?.state?.completion?.messages;
-    //         if (messagesFromState) {
-    //             let messages = messagesFromState?.filter((m: any) => {
-    //                 return (
-    //                     (m.role === 'user' || m.role === 'assistant') &&
-    //                     m.content instanceof Array &&
-    //                     m.content[0] &&
-    //                     m.content[0].text
-    //                 );
-    //             });
-    //             const messagesFiltered: Message[] = filterMessages(
-    //                 messages
-    //             ).map((m: any) => {
-    //                 return {
-    //                     type:
-    //                         m.role === 'user'
-    //                             ? MessageType.User
-    //                             : MessageType.Bot,
-    //                     message: m.content[0].text,
-    //                 };
-    //             });
-    //             console.log('filtered messages', messagesFiltered);
-    //             setMessages(messagesFiltered);
-    //         }
-    //     }
-    // }, [task]);
-
     useEffect(() => {
         const fetchTask = async () => {
             try {
@@ -283,106 +245,104 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     }, [router, id]);
 
     return (
-        <Layout>
+        <Stack
+            spacing={3}
+            sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+            }}
+        >
             <Stack
                 spacing={3}
                 sx={{
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    height: '100%',
+                    overflowY: 'auto',
                 }}
             >
+                <Stack spacing={1} sx={{ flex: '0 1 auto' }}>
+                    <Typography variant="h3">{task?.Name}</Typography>
+                    <Typography
+                        variant="h4"
+                        sx={{
+                            fontWeight: 'light',
+                            fontSize: '1rem',
+                            color: 'text.secondary',
+                        }}
+                    >
+                        {task?.Description}
+                    </Typography>
+                </Stack>
                 <Stack
-                    spacing={3}
                     sx={{
-                        flex: 1,
+                        flex: '1 1 auto',
                         display: 'flex',
                         flexDirection: 'column',
+                        height: '100%',
                         overflowY: 'auto',
                     }}
                 >
-                    <Stack spacing={1} sx={{ flex: '0 1 auto' }}>
-                        <Typography variant="h3">{task?.Name}</Typography>
-                        <Typography
-                            variant="h4"
-                            sx={{
-                                fontWeight: 'light',
-                                fontSize: '1rem',
-                                color: 'text.secondary',
-                            }}
-                        >
-                            {task?.Description}
-                        </Typography>
-                    </Stack>
-                    <Stack
+                    <Card
                         sx={{
-                            flex: '1 1 auto',
+                            flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
-                            height: '100%',
                             overflowY: 'auto',
+                            height: '100%',
                         }}
                     >
-                        <Card
+                        <Box
                             sx={{
                                 flex: 1,
-                                display: 'flex',
-                                flexDirection: 'column',
+                                padding: 2,
                                 overflowY: 'auto',
-                                height: '100%',
                             }}
                         >
-                            <Box
-                                sx={{
-                                    flex: 1,
-                                    padding: 2,
-                                    overflowY: 'auto',
+                            <Messages messages={messages} noAvatar={true} />
+                            <div ref={messagesEndRef} />
+                        </Box>
+                        <Box
+                            sx={{
+                                padding: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderTop: '1px solid #e0e0e0',
+                            }}
+                        >
+                            <TextField
+                                variant="outlined"
+                                fullWidth
+                                multiline
+                                rows={1}
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                placeholder="Type your message"
+                                onKeyPress={(e: any) => {
+                                    if (e.shiftKey && e.charCode === 13) {
+                                        return true;
+                                    }
+                                    if (e.charCode === 13) {
+                                        sendMessage();
+                                    }
                                 }}
+                            />
+                            <Button
+                                variant="contained"
+                                disabled={generating}
+                                color="primary"
+                                onClick={sendMessage}
+                                sx={{ marginLeft: 2 }}
                             >
-                                <Messages messages={messages} noAvatar={true} />
-                                <div ref={messagesEndRef} />
-                            </Box>
-                            <Box
-                                sx={{
-                                    padding: 2,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    borderTop: '1px solid #e0e0e0',
-                                }}
-                            >
-                                <TextField
-                                    variant="outlined"
-                                    fullWidth
-                                    multiline
-                                    rows={1}
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    placeholder="Type your message"
-                                    onKeyPress={(e: any) => {
-                                        if (e.shiftKey && e.charCode === 13) {
-                                            return true;
-                                        }
-                                        if (e.charCode === 13) {
-                                            sendMessage();
-                                        }
-                                    }}
-                                />
-                                <Button
-                                    variant="contained"
-                                    disabled={generating}
-                                    color="primary"
-                                    onClick={sendMessage}
-                                    sx={{ marginLeft: 2 }}
-                                >
-                                    Send
-                                </Button>
-                            </Box>
-                        </Card>
-                    </Stack>
+                                Send
+                            </Button>
+                        </Box>
+                    </Card>
                 </Stack>
             </Stack>
-        </Layout>
+        </Stack>
     );
 };
 

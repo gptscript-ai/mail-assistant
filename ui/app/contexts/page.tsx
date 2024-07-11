@@ -6,7 +6,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Plus as PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import { MinusCircle as MinusIcon } from '@phosphor-icons/react/dist/ssr/MinusCircle';
-import { Play as PlayIcon } from '@phosphor-icons/react/dist/ssr/Play';
 
 import Card from '@mui/material/Card';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -14,20 +13,24 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import TaskFormModal from '@/app/tasks/taskForm';
-import { TasksTable } from '@/app/tasks/taskTable';
-import { useTheme } from '@mui/material/styles';
-import ContextFormDialog from '@/app/tasks/contextDialog';
+import ContextFormModal from '@/app/contexts/contextForm';
+import { ContextsTable } from '@/app/contexts/contextTable';
 
 export default function Page(): React.JSX.Element {
-    const theme = useTheme();
     const router = useRouter();
     const page = 0;
     const rowsPerPage = 5;
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [contexts, setContexts] = useState<Context[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
-    const [contexts, setContexts] = React.useState<Context[]>([]);
+
+    const handleAddContextClick = () => {
+        setIsModalVisible(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalVisible(false);
+    };
 
     const fetchContexts = async () => {
         try {
@@ -48,83 +51,49 @@ export default function Page(): React.JSX.Element {
         }
     };
 
-    const handleAddTaskClick = () => {
-        setIsModalVisible(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalVisible(false);
-    };
-
-    const fetchTasks = async () => {
-        try {
-            const response = await fetch('/api/tasks');
-            let tasks: Task[] = await response.json();
-            tasks = tasks?.sort((a, b) => {
-                if (a.CreatedAt < b.CreatedAt) {
-                    return -1;
-                }
-                if (a.CreatedAt > b.CreatedAt) {
-                    return 1;
-                }
-                return 0;
-            });
-            setTasks(tasks);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const handleCreateTask = async (
+    const handleCreateContext = async (
         name: string,
         description: string,
-        context: string,
-        id?: string,
-        contextIds?: string[]
+        content: string
     ) => {
         try {
-            const response = await fetch('/api/tasks', {
+            const response = await fetch('/api/contexts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    name,
-                    description,
-                    context,
-                    contextIds,
-                }),
+                body: JSON.stringify({ name, description, content }),
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create task');
+                throw new Error('Failed to create context');
             }
 
             const data = await response.json();
-            console.log('Task created:', data);
-            fetchTasks();
+            console.log('Context created:', data);
+            fetchContexts();
             setIsModalVisible(false);
         } catch (error) {
             console.error(error);
         }
     };
 
-    const handleDeleteTask = async () => {
+    const handleDeleteContext = async () => {
         if (selected.size === 0) {
-            alert('Must select at least one task to delete');
+            alert('Must select at least one context to delete');
         }
         try {
             for (const id of Array.from(selected)) {
-                const response = await fetch(`/api/tasks/${id}`, {
+                const response = await fetch(`/api/contexts/${id}`, {
                     method: 'DELETE',
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to delete task');
+                    throw new Error('Failed to delete context');
                 }
-                console.log('Task deleted: ', id);
+                console.log('Context deleted: ', id);
             }
-            fetchTasks();
+            fetchContexts();
             setSelected(new Set());
         } catch (error) {
             console.error(error);
@@ -132,19 +101,17 @@ export default function Page(): React.JSX.Element {
     };
 
     useEffect(() => {
-        fetchTasks();
         fetchContexts();
-        setInterval(() => fetchTasks(), 10000);
         setInterval(() => fetchContexts(), 10000);
     }, []);
 
-    const renderedTasks = applyPagination(tasks, page, rowsPerPage);
+    const renderedContexts = applyPagination(contexts, page, rowsPerPage);
 
     return (
         <Stack spacing={3}>
             <Stack direction="row" spacing={3}>
                 <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
-                    <Typography variant="h4">Tasks</Typography>
+                    <Typography variant="h4">Contexts</Typography>
                 </Stack>
                 <Stack
                     direction="row"
@@ -155,7 +122,7 @@ export default function Page(): React.JSX.Element {
                         startIcon={
                             <PlusIcon fontSize="var(--icon-fontSize-md)" />
                         }
-                        onClick={handleAddTaskClick}
+                        onClick={handleAddContextClick}
                         variant="contained"
                         color="primary"
                     >
@@ -167,7 +134,7 @@ export default function Page(): React.JSX.Element {
                                 startIcon={
                                     <MinusIcon fontSize="var(--icon-fontSize-md)" />
                                 }
-                                onClick={handleDeleteTask}
+                                onClick={handleDeleteContext}
                                 variant="contained"
                                 color="error"
                             >
@@ -181,7 +148,7 @@ export default function Page(): React.JSX.Element {
                 <OutlinedInput
                     defaultValue=""
                     fullWidth
-                    placeholder="Search tasks"
+                    placeholder="Search contexts"
                     startAdornment={
                         <InputAdornment position="start">
                             <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
@@ -190,33 +157,31 @@ export default function Page(): React.JSX.Element {
                     sx={{ maxWidth: '500px' }}
                 />
             </Card>
-            {renderedTasks && (
-                <TasksTable
-                    count={renderedTasks.length}
+            {renderedContexts && (
+                <ContextsTable
+                    count={renderedContexts.length}
                     page={page}
-                    rows={renderedTasks}
+                    rows={renderedContexts}
                     rowsPerPage={rowsPerPage}
                     selectedIds={selected}
                     setSelectedIds={setSelected}
-                    fetchTasks={fetchTasks}
-                    contexts={contexts}
+                    fetchContexts={fetchContexts}
                 />
             )}
-            <TaskFormModal
+            <ContextFormModal
                 open={isModalVisible}
                 onClose={handleCloseModal}
-                onSubmit={handleCreateTask}
+                onSubmit={handleCreateContext}
                 create={true}
-                contexts={contexts}
             />
         </Stack>
     );
 }
 
 function applyPagination(
-    rows: Task[],
+    rows: Context[],
     page: number,
     rowsPerPage: number
-): Task[] {
+): Context[] {
     return rows?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }

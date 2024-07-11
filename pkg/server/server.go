@@ -12,6 +12,7 @@ import (
 
 	"ethan/pkg/db"
 	"ethan/pkg/server/auth"
+	"ethan/pkg/server/contexts"
 	"ethan/pkg/server/message"
 	"ethan/pkg/server/subscribe"
 	"ethan/pkg/server/task"
@@ -54,9 +55,11 @@ func main() {
 	}
 
 	go subscribe.PerUser(ctx, queries)
+	go auth.RefreshToken(ctx, queries)
 
 	authHandler := auth.NewHandler(queries)
 	taskHandler := task.NewHandler(queries)
+	contextHandler := contexts.NewHandler(queries)
 	subscribeHandler := subscribe.NewHandler(queries)
 	messageHandler := message.NewHandler(queries)
 
@@ -88,6 +91,12 @@ func main() {
 	apiRouter.HandleFunc("/tasks/{id}", auth.Middleware(taskHandler.UpdateTask)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/tasks/{id}", auth.Middleware(taskHandler.DeleteTask)).Methods(http.MethodDelete)
 	apiRouter.HandleFunc("/tasks/{id}/run", auth.Middleware(taskHandler.RunTask))
+
+	// Context
+	apiRouter.HandleFunc("/contexts", auth.Middleware(contextHandler.ListContext)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/contexts", auth.Middleware(contextHandler.CreateContext)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/contexts/{id}", auth.Middleware(contextHandler.UpdateContext)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/contexts/{id}", auth.Middleware(contextHandler.DeleteContext)).Methods(http.MethodDelete)
 
 	// Messages
 	apiRouter.HandleFunc("/messages", auth.Middleware(messageHandler.ListMessages)).Methods(http.MethodGet)

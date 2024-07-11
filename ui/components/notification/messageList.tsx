@@ -57,7 +57,14 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
             method: 'POST',
         });
 
-        router.push(`/task/${m.TaskID}`);
+        const path = window.location.pathname;
+        console.log(path);
+
+        if (path === `/task/${m.TaskID}`) {
+            window.location.reload();
+        } else {
+            router.push(`/task/${m.TaskID}`);
+        }
     };
 
     return (

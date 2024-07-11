@@ -14,6 +14,8 @@ import (
 
 	"ethan/pkg/db"
 	"ethan/pkg/mstoken"
+	"github.com/google/uuid"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -30,8 +32,8 @@ var (
 	oauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("MICROSOFT_CLIENT_ID"),
 		ClientSecret: os.Getenv("MICROSOFT_CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:8080/api/auth/callback",
-		Scopes:       []string{"User.Read", "Mail.ReadWrite", "Mail.Send", "Contacts.Read", "Calendars.ReadWrite"},
+		RedirectURL:  fmt.Sprintf("%v/api/auth/callback", getPublicURL()),
+		Scopes:       []string{"User.Read", "Mail.ReadWrite", "Mail.Send", "Contacts.Read", "Calendars.ReadWrite", "offline_access"},
 		Endpoint:     microsoft.AzureADEndpoint(os.Getenv("MICROSOFT_TENANT_ID")),
 	}
 	jwtKey = []byte(os.Getenv("MICROSOFT_JWT_KEY"))
@@ -40,6 +42,13 @@ var (
 type StateStore struct {
 	states map[string]time.Time
 	mutex  sync.RWMutex
+}
+
+func getPublicURL() string {
+	if os.Getenv("DEVELOPMENT") == "true" {
+		return "http://localhost:8080"
+	}
+	return os.Getenv("PUBLIC_URL")
 }
 
 func NewStateStore() *StateStore {
@@ -86,7 +95,7 @@ type Handler struct {
 func NewHandler(queries *db.Queries) *Handler {
 	return &Handler{
 		queries: queries,
-		states: NewStateStore(),
+		states:  NewStateStore(),
 	}
 }
 
@@ -142,7 +151,7 @@ func (h *Handler) HandleMicrosoftCallback(w http.ResponseWriter, r *http.Request
 	cookie := &http.Cookie{
 		Name:     JwtTokenName,
 		Value:    jwtToken,
-		Expires:  time.Now().Add(time.Hour),
+		Expires:  time.Now().Add(time.Hour * 24),
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteDefaultMode,
@@ -172,7 +181,7 @@ func (h *Handler) saveUserInfo(ctx context.Context, state string, code string) (
 
 	me, err := client.Me().Get(ctx, nil)
 	if err != nil {
-		return db.User{},fmt.Errorf("failed to get me client: %s", err.Error())
+		return db.User{}, fmt.Errorf("failed to get me client: %s", err.Error())
 	}
 
 	email := me.GetMail()
@@ -189,9 +198,10 @@ func (h *Handler) saveUserInfo(ctx context.Context, state string, code string) (
 				Email:        *email,
 				ExpireAt:     t,
 				Token:        token.AccessToken,
+				RefreshToken: &token.RefreshToken,
 			})
 			if err != nil {
-				return db.User{},fmt.Errorf("failed to create user: %w", err)
+				return db.User{}, fmt.Errorf("failed to create user: %w", err)
 			}
 			logrus.Info("User created")
 			return newUser, nil
@@ -199,14 +209,15 @@ func (h *Handler) saveUserInfo(ctx context.Context, state string, code string) (
 		return db.User{}, fmt.Errorf("failed to get user: %w", err)
 	} else {
 		if err := h.queries.UpdateUser(ctx, db.UpdateUserParams{
-			ID:           user.ID,
-			Token:        token.AccessToken,
-			ExpireAt:     t,
-			SubscriptionID:  user.SubscriptionID,
+			ID:             user.ID,
+			Token:          token.AccessToken,
+			RefreshToken:   &token.RefreshToken,
+			ExpireAt:       t,
+			SubscriptionID: user.SubscriptionID,
 		}); err != nil {
-			return db.User{},fmt.Errorf("failed to update user token: %w", err)
+			return db.User{}, fmt.Errorf("failed to update user token: %w", err)
 		}
-		logrus.Infof("User %v updated", user.ID)
+		logrus.Infof("User %v updated", uuid.UUID(user.ID.Bytes).String())
 	}
 	return user, nil
 }
@@ -216,7 +227,7 @@ func createJWT(user db.User) (string, error) {
 		"sub":   user.ID,
 		"name":  user.Name,
 		"email": user.Email,
-		"exp":   time.Now().Add(time.Hour).Unix(),
+		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

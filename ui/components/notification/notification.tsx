@@ -18,6 +18,7 @@ import Transitions from '@/components/@extended/Transitions';
 import { BellOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import MainCard from '@/components/card/MainCard';
 import MessageList, { Message } from '@/components/notification/messageList';
+import { useRouter } from 'next/navigation';
 
 // ==============================|| HEADER CONTENT - NOTIFICATION ||============================== //
 
@@ -25,6 +26,7 @@ export default function Notification() {
     const theme: any = useTheme();
     const matchesXs = useMediaQuery(theme.breakpoints.down('md'));
 
+    const router = useRouter();
     const anchorRef = useRef<any>(null);
     const [read, setRead] = useState<number>(0);
     const [open, setOpen] = useState<boolean>(false);
@@ -34,7 +36,6 @@ export default function Notification() {
         try {
             const response = await fetch('/api/messages');
             let messages: Message[] = await response.json();
-            console.log(messages);
             if (messages) {
                 messages = await Promise.all(
                     messages.map(async (m) => {
@@ -48,11 +49,9 @@ export default function Notification() {
                     })
                 );
                 setMessages(messages);
-                for (const m of messages) {
-                    if (!m.Read) {
-                        setRead((r) => r + 1);
-                    }
-                }
+                setRead(() => {
+                    return messages.filter((m) => !m.Read).length;
+                });
             }
         } catch (error) {
             console.error(error);
@@ -61,6 +60,7 @@ export default function Notification() {
 
     useEffect(() => {
         fetchMessages();
+        setInterval(() => fetchMessages(), 5000);
     }, []);
 
     const handleToggle = () => {

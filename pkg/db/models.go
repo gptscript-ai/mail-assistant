@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Context struct {
+	ID          pgtype.UUID
+	Name        *string
+	Description *string
+	Content     *string
+	UserID      pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Message struct {
 	ID        pgtype.UUID
 	MessageID *string
@@ -22,9 +31,14 @@ type Task struct {
 	ID             pgtype.UUID
 	Name           string
 	Description    string
+	ToolDefinition *string
+	Context        *string
 	CreatedAt      pgtype.Timestamptz
 	UserID         pgtype.UUID
+	MessageID      *string
+	MessageBody    *string
 	ConversationID *string
+	ContextIds     []pgtype.UUID
 	State          []byte
 }
 
@@ -33,6 +47,7 @@ type User struct {
 	Name                 string
 	Email                string
 	Token                string
+	RefreshToken         *string
 	SubscriptionID       *string
 	SubscriptionExpireAt pgtype.Timestamptz
 	ExpireAt             pgtype.Timestamptz

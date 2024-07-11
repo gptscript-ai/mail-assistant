@@ -13,6 +13,7 @@ func New() *cobra.Command {
 		new(SendEmail),
 		new(Schedule),
 		new(CheckSchedule),
+		new(ListSubjects),
 	)
 }
 

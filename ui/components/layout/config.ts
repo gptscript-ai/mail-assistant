@@ -7,4 +7,10 @@ export const navItems = [
         href: '/tasks',
         icon: 'task',
     },
+    {
+        key: 'contexts',
+        title: 'Contexts',
+        href: '/contexts',
+        icon: 'context',
+    },
 ] satisfies NavItemConfig[];

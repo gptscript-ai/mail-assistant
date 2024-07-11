@@ -1,3 +1,4 @@
+import * as React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Checkbox from '@mui/material/Checkbox';
@@ -17,43 +18,40 @@ import { Trash as TrashIcon } from '@phosphor-icons/react/dist/ssr/Trash';
 import { Pencil as PencilIcon } from '@phosphor-icons/react/dist/ssr/Pencil';
 
 import { useSelection } from '@/hooks/use-selection';
-import { useMemo, useState } from 'react';
-import TaskFormModal from '@/app/tasks/taskForm';
+import { useState } from 'react';
+import ContextFormModal from '@/app/contexts/contextForm';
 import IconButton from '@mui/material/IconButton';
 import { ListItemText, Menu } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { useRouter } from 'next/navigation';
-import ContextFormDialog from '@/app/tasks/contextDialog';
 
 interface CustomersTableProps {
     count?: number;
     page?: number;
-    rows?: Task[];
+    rows?: Context[];
     rowsPerPage?: number;
     selectedIds: Set<string>;
     setSelectedIds: any;
-    contexts: Context[];
-    fetchTasks: () => Promise<void>;
+    fetchContexts: () => Promise<void>;
 }
 
 function noop(): void {
     // do nothing
 }
 
-export function TasksTable({
+export function ContextsTable({
     count = 0,
     rows = [],
     page = 0,
     rowsPerPage = 0,
     selectedIds,
     setSelectedIds,
-    contexts,
     // @ts-ignore
-    fetchTasks,
+    fetchContexts,
 }: CustomersTableProps): React.JSX.Element {
-    const rowIds = useMemo(() => {
-        return rows.map((task) => task.ID);
+    const rowIds = React.useMemo(() => {
+        return rows.map((context) => context.ID);
     }, [rows]);
 
     const router = useRouter();
@@ -61,79 +59,60 @@ export function TasksTable({
         useSelection(rowIds, selectedIds, setSelectedIds);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-    const [editingTask, setEditingTask] = useState<Task>();
-    const [showContextDialog, setShowContextDialog] = useState(false);
+    const [editingContext, setEditingContext] = useState<Context>();
 
     const handleMenuOpen = (
         event: React.MouseEvent<HTMLElement>,
-        row: Task
+        row: Context
     ) => {
         setMenuAnchorEl(event.currentTarget);
-        setEditingTask(row);
+        setEditingContext(row);
     };
 
     const handleMenuClose = () => {
         setMenuAnchorEl(null);
     };
 
-    const handleOnCloseDialog = () => {
-        setShowContextDialog(false);
-    };
-
-    const handleRunTaskClick = (id: string) => {
-        setMenuAnchorEl(null);
-        if (
-            editingTask?.Context &&
-            editingTask?.ContextIds &&
-            editingTask?.ContextIds.length > 0
-        ) {
-            router.push(`/task/${id}`);
-        } else {
-            setShowContextDialog(true);
-        }
-    };
-
-    const handleUpdateTaskClick = () => {
+    const handleUpdateContextClick = () => {
         setIsModalVisible(true);
         setMenuAnchorEl(null);
     };
 
-    const handleDeleteTaskClick = async (id: string) => {
-        const response = await fetch(`/api/tasks/${id}`, {
+    const handleDeleteContextClick = async (id: string) => {
+        const response = await fetch(`/api/contexts/${id}`, {
             method: 'DELETE',
         });
 
         if (!response.ok) {
-            throw new Error('Failed to delete task');
+            throw new Error('Failed to delete context');
         }
-        await fetchTasks();
-        console.log('Task deleted: ', id);
+        fetchContexts();
+        console.log('Context deleted: ', id);
     };
 
     const handleCloseModal = () => {
         setIsModalVisible(false);
     };
 
-    const handleUpdateTask = async (
+    const handleUpdateContext = async (
         name: string,
         description: string,
-        context: string,
-        id?: string,
-        contextIds?: string[]
+        content: string,
+        id?: string
     ) => {
-        const response = await fetch(`/api/tasks/${id}`, {
+        const response = await fetch(`/api/contexts/${id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ name, description, context, contextIds }),
+            body: JSON.stringify({ name, description, content }),
         });
 
         if (!response.ok) {
-            console.error(new Error('Failed to create task'));
+            console.error(new Error('Failed to create context'));
         }
         setIsModalVisible(false);
-        fetchTasks();
+        fetchContexts();
     };
 
     const selectedSome =
@@ -217,17 +196,9 @@ export function TasksTable({
                                             onClose={handleMenuClose}
                                         >
                                             <MenuItem
-                                                onClick={() =>
-                                                    handleRunTaskClick(row.ID)
+                                                onClick={
+                                                    handleUpdateContextClick
                                                 }
-                                            >
-                                                <ListItemIcon>
-                                                    <PlayIcon />
-                                                </ListItemIcon>
-                                                <ListItemText primary="Run" />
-                                            </MenuItem>
-                                            <MenuItem
-                                                onClick={handleUpdateTaskClick}
                                             >
                                                 <ListItemIcon>
                                                     <PencilIcon />
@@ -240,7 +211,7 @@ export function TasksTable({
                                                     fontWeight: 'bold',
                                                 }}
                                                 onClick={() =>
-                                                    handleDeleteTaskClick(
+                                                    handleDeleteContextClick(
                                                         row.ID
                                                     )
                                                 }
@@ -270,22 +241,13 @@ export function TasksTable({
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={[5, 10, 25]}
             />
-            <TaskFormModal
+            <ContextFormModal
                 open={isModalVisible}
                 onClose={handleCloseModal}
-                onSubmit={handleUpdateTask}
-                task={editingTask}
-                contexts={contexts}
+                onSubmit={handleUpdateContext}
+                context={editingContext}
                 create={false}
             />
-            {editingTask && (
-                <ContextFormDialog
-                    open={showContextDialog}
-                    onClose={handleOnCloseDialog}
-                    contexts={contexts}
-                    task={editingTask}
-                ></ContextFormDialog>
-            )}
         </Card>
     );
 }

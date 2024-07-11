@@ -5,5 +5,7 @@ interface Task {
     CreatedAt: string;
     State: string;
     Checked: string;
+    Context: string;
+    ContextIds: string[];
     RepliedEmails: string;
 }

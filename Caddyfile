@@ -1,0 +1,3 @@
+executive-demo.duckdns.org {
+    reverse_proxy http://server:8080
+}
