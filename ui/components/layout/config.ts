@@ -14,3 +14,17 @@ export const navItems = [
         icon: 'context',
     },
 ] satisfies NavItemConfig[];
+
+export const bottomNavItems = [
+    {
+        key: 'account',
+        title: 'Account',
+        icon: 'account',
+        href: '/account',
+    },
+    {
+        key: 'signout',
+        title: 'Sign Out',
+        icon: 'signout',
+    },
+] satisfies NavItemConfig[];

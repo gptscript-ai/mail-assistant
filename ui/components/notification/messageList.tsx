@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
-import {
-    Button,
-    List,
-    ListItem,
-    ListItemText,
-    Typography,
-} from '@mui/material';
+import { List, ListItem, ListItemText, Typography } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
-import { MessageOutlined } from '@ant-design/icons';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemButton from '@mui/material/ListItemButton';
-import { format, render, cancel, register } from 'timeago.js';
+import { format } from 'timeago.js';
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
-import { router } from 'next/client';
 import { useRouter } from 'next/navigation';
+import { Wrench } from '@phosphor-icons/react/dist/ssr/Wrench';
+import { Bell } from '@phosphor-icons/react/dist/ssr/Bell';
+import { BellRinging } from '@phosphor-icons/react/dist/ssr/BellRinging';
+import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 
 export interface Message {
     ID: string;
@@ -85,47 +82,93 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                             position: 'relative',
                         },
                     },
+                    display: 'flex',
+                    flexDirection: 'column',
                 }}
             >
                 {messages.slice(0, visibleCount).map((message) => (
                     // eslint-disable-next-line react/jsx-key
-                    <ListItemButton onClick={() => handleMessageClick(message)}>
-                        <ListItemAvatar>
+                    <ListItemButton
+                        sx={{
+                            bgcolor: message.Read
+                                ? 'background.paper'
+                                : 'primary.lighter',
+                        }}
+                        onClick={() => handleMessageClick(message)}
+                    >
+                        <ListItemAvatar
+                            sx={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
                             <Avatar
                                 sx={{
                                     color: 'primary.main',
-                                    bgcolor: 'primary.lighter',
                                 }}
                             >
-                                <MessageOutlined />
+                                {message.Read ? (
+                                    <Bell size={24} />
+                                ) : (
+                                    <BellRinging size={24} />
+                                )}
                             </Avatar>
                         </ListItemAvatar>
-                        <ListItem key={message.ID}>
+                        <ListItem
+                            key={message.ID}
+                            sx={{
+                                fontWeight: message.Read ? 'normal' : 'bold',
+                            }}
+                        >
                             <ListItemText
                                 primary={
                                     <Typography variant="h6">
                                         {message.Content}
                                     </Typography>
                                 }
-                                secondary={message.TaskName}
+                                secondary={
+                                    <Stack direction="row">
+                                        <Wrench size={20} />
+                                        <Typography
+                                            sx={{ ml: '4px' }}
+                                            variant="h6"
+                                        >
+                                            {message.TaskName}
+                                        </Typography>
+                                    </Stack>
+                                }
                             />
                         </ListItem>
-                        <ListItemSecondaryAction>
-                            <Typography variant="caption" noWrap>
-                                {format(message.CreatedAt, 'en_us')}
-                            </Typography>
-                        </ListItemSecondaryAction>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: '100px',
+                            }}
+                        >
+                            <ListItemSecondaryAction>
+                                <Typography variant="caption" noWrap>
+                                    {format(message.CreatedAt, 'en_us')}
+                                </Typography>
+                            </ListItemSecondaryAction>
+                        </Box>
                     </ListItemButton>
                 ))}
             </List>
             {visibleCount < messages.length && (
-                <Button
+                <ListItemButton
                     onClick={handleViewAll}
-                    variant="contained"
-                    color="primary"
+                    sx={{ textAlign: 'center', py: `${12}px !important` }}
                 >
-                    View All
-                </Button>
+                    <ListItemText
+                        primary={
+                            <Typography variant="h6" color="primary">
+                                View All
+                            </Typography>
+                        }
+                    />
+                </ListItemButton>
             )}
         </div>
     );

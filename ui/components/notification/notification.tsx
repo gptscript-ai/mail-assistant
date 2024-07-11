@@ -123,7 +123,9 @@ export default function Notification() {
                                 boxShadow: theme.customShadows.z1,
                                 width: '100%',
                                 minWidth: 285,
-                                maxWidth: { xs: 285, md: 420 },
+                                maxWidth: { xs: 285, md: 620 },
+                                display: 'flex',
+                                flexDirection: 'column',
                             }}
                         >
                             <ClickAwayListener onClickAway={handleClose}>
@@ -132,6 +134,12 @@ export default function Notification() {
                                     elevation={0}
                                     border={false}
                                     content={false}
+                                    sx={{
+                                        flexGrow: 1,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        minWidth: 0,
+                                    }}
                                     secondary={
                                         <>
                                             {read > 0 && (

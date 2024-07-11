@@ -7,12 +7,13 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { SignOut } from '@phosphor-icons/react/dist/ssr/SignOut';
 
 import type { NavItemConfig } from '@/types/nav';
 import { isNavItemActive } from '@/lib/is-nav-item-active';
 import { Logo } from '@/components/core/logo';
 
-import { navItems } from './config';
+import { bottomNavItems, navItems } from './config';
 import { navIcons } from './nav-icons';
 
 export function SideNav(): React.JSX.Element {
@@ -63,6 +64,9 @@ export function SideNav(): React.JSX.Element {
             <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
                 {renderNavItems({ pathname, items: navItems })}
             </Box>
+            <Stack spacing={2} sx={{ p: '12px' }}>
+                {renderNavItems({ pathname, items: bottomNavItems })}
+            </Stack>
             <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
         </Box>
     );

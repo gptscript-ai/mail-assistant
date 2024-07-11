@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Messages from '@/components/message/message';
 import { Message, MessageType } from '@/types/message';
 import { CallFrame } from '@gptscript-ai/gptscript';
+import { Note } from '@phosphor-icons/react/dist/ssr/Note';
 
 const style = {
     position: 'absolute' as 'absolute',
@@ -21,23 +22,6 @@ const style = {
 
 interface TaskFormModalProps {
     id: string;
-}
-
-function filterMessages(messages: any[]): any[] {
-    let lastUserMessageIndex = -1;
-
-    for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].role === 'user') {
-            lastUserMessageIndex = i;
-            break;
-        }
-    }
-
-    if (lastUserMessageIndex === -1) {
-        return [];
-    }
-
-    return messages.slice(0, lastUserMessageIndex + 1);
 }
 
 function replaceProtocolWithWebSocket(url: string | undefined): string {
@@ -76,6 +60,67 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     };
 
     useEffect(() => {
+        if (task?.State) {
+            const state = JSON.parse(
+                Buffer.from(task.State, 'base64').toString('utf-8')
+            );
+            let messagesFromState =
+                state?.continuation?.state?.completion?.messages;
+            if (messagesFromState) {
+                let messages = messagesFromState.filter((m: any) => {
+                    return (
+                        (m.role === 'user' || m.role === 'assistant') &&
+                        m.content instanceof Array &&
+                        m.content[0] &&
+                        m.content[0].text
+                    );
+                });
+                const messagesFiltered: Message[] = messages.map((m: any) => {
+                    return {
+                        type:
+                            m.role === 'user'
+                                ? MessageType.User
+                                : MessageType.Bot,
+                        message: m.content[0].text,
+                    };
+                });
+
+                // Filter to keep only the last assistant message at the end if there are multiple
+                const filteredMessages: Message[] = [];
+                let lastUserMessageIndex = -1;
+
+                // Find the index of the last user message
+                for (let i = 0; i < messagesFiltered.length; i++) {
+                    if (messagesFiltered[i].type === MessageType.User) {
+                        lastUserMessageIndex = i;
+                    }
+                }
+
+                // Add messages up to the last user message
+                for (let i = 0; i <= lastUserMessageIndex; i++) {
+                    filteredMessages.push(messagesFiltered[i]);
+                }
+
+                // Add the last assistant message if there are any assistant messages after the last user message
+                if (lastUserMessageIndex < messagesFiltered.length - 1) {
+                    for (
+                        let i = messagesFiltered.length - 1;
+                        i > lastUserMessageIndex;
+                        i--
+                    ) {
+                        if (messagesFiltered[i].type === MessageType.Bot) {
+                            filteredMessages.push(messagesFiltered[i]);
+                            break;
+                        }
+                    }
+                }
+                setMessages(filteredMessages);
+                latestBotMessageIndex.current = filteredMessages.length;
+            }
+        }
+    }, [task]);
+
+    useEffect(() => {
         scrollToBottom();
     }, [messages, messagesRef]);
 
@@ -108,7 +153,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
             if (!content) return;
             setGenerating(true);
             if (
-                content === 'Waiting for model response...' &&
+                content === '⏳⏳⏳ Waiting for model response...' &&
                 latestBotMessageIndex.current !== -1 &&
                 messagesRef.current[latestBotMessageIndex.current]?.message
             )
@@ -116,7 +161,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
 
             if (content.startsWith('<tool call>')) {
                 const parsedToolCall = parseToolCall(content);
-                content = `Calling tool ${parsedToolCall.tool}...`;
+                content = `🛠️ Calling tool ${parsedToolCall.tool}...`;
             }
 
             let message: Message = {
@@ -148,6 +193,8 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
             }
 
             if (isMainContent && frame.type == 'callFinish') {
+                console.log(frame);
+                console.log(state);
                 setGenerating(false);
                 latestBotMessageIndex.current = -1;
             }
@@ -265,16 +312,19 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
             >
                 <Stack spacing={1} sx={{ flex: '0 1 auto' }}>
                     <Typography variant="h3">{task?.Name}</Typography>
-                    <Typography
-                        variant="h4"
-                        sx={{
-                            fontWeight: 'light',
-                            fontSize: '1rem',
-                            color: 'text.secondary',
-                        }}
-                    >
-                        {task?.Description}
-                    </Typography>
+                    <Stack direction="row">
+                        <Note size={24} />
+                        <Typography
+                            variant="h4"
+                            sx={{
+                                fontWeight: 'light',
+                                fontSize: '1rem',
+                                color: 'text.secondary',
+                            }}
+                        >
+                            {task?.Description}
+                        </Typography>
+                    </Stack>
                 </Stack>
                 <Stack
                     sx={{
