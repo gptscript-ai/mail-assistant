@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, TextField, Button, Typography } from '@mui/material';
+import { Box, Button, TextField, Typography } from '@mui/material';
 import Stack from '@mui/material/Stack';
 import Card from '@mui/material/Card';
 import { useRouter } from 'next/navigation';
 import Messages from '@/components/message/message';
-import { Message, MessageType } from '@/types/message';
+import { ChatMessage, MessageType } from '@/types/message';
 import { CallFrame } from '@gptscript-ai/gptscript';
 import { Note } from '@phosphor-icons/react/dist/ssr/Note';
+import { Task } from '@/types/task';
 
 const style = {
     position: 'absolute' as 'absolute',
@@ -43,7 +44,7 @@ function replaceProtocolWithWebSocket(url: string | undefined): string {
 export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     const router = useRouter();
     const [task, setTask] = useState<Task>();
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [message, setMessage] = useState('');
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const latestBotMessageIndex = useRef<number>(-1);
@@ -58,6 +59,14 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     };
+
+    useEffect(() => {
+        task?.Messages?.filter((m) => !m.Read).forEach((m) => {
+            fetch(`/api/messages/${m.ID}`, {
+                method: 'POST',
+            });
+        });
+    }, [task]);
 
     useEffect(() => {
         if (task?.State) {
@@ -75,21 +84,21 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                         m.content[0].text
                     );
                 });
-                const messagesFiltered: Message[] = messages.map((m: any) => {
-                    return {
-                        type:
-                            m.role === 'user'
-                                ? MessageType.User
-                                : MessageType.Bot,
-                        message: m.content[0].text,
-                    };
-                });
+                const messagesFiltered: ChatMessage[] = messages.map(
+                    (m: any) => {
+                        return {
+                            type:
+                                m.role === 'user'
+                                    ? MessageType.User
+                                    : MessageType.Bot,
+                            message: m.content[0].text,
+                        };
+                    }
+                );
 
-                // Filter to keep only the last assistant message at the end if there are multiple
-                const filteredMessages: Message[] = [];
+                const filteredMessages: ChatMessage[] = [];
                 let lastUserMessageIndex = -1;
 
-                // Find the index of the last user message
                 for (let i = 0; i < messagesFiltered.length; i++) {
                     if (messagesFiltered[i].type === MessageType.User) {
                         lastUserMessageIndex = i;
@@ -164,7 +173,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                 content = `🛠️ Calling tool ${parsedToolCall.tool}...`;
             }
 
-            let message: Message = {
+            let message: ChatMessage = {
                 type: MessageType.Bot,
                 message: content,
                 calls: state,
@@ -193,8 +202,6 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
             }
 
             if (isMainContent && frame.type == 'callFinish') {
-                console.log(frame);
-                console.log(state);
                 setGenerating(false);
                 latestBotMessageIndex.current = -1;
             }
@@ -274,18 +281,29 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     useEffect(() => {
         const fetchTask = async () => {
             try {
-                const response = await fetch(`/api/tasks/${id}`);
-                const data = await response.json();
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        router.push('/signin');
-                        return;
-                    }
-                    throw new Error(`Failed to fetch task ${id}`);
-                }
-                setTask(data);
+                const taskResponse = await fetch(`/api/tasks/${id}`);
+                const task: Task = await taskResponse.json();
+
+                const addQueryParams = (
+                    baseUrl: string,
+                    params: { [key: string]: string }
+                ): string => {
+                    const url = new URL(baseUrl, window.location.origin);
+                    Object.keys(params).forEach((key) =>
+                        url.searchParams.append(key, params[key])
+                    );
+                    return url.toString();
+                };
+
+                const messagesResponse = await fetch(
+                    addQueryParams('/api/messages', {
+                        taskId: task.ID,
+                    })
+                );
+                task.Messages = await messagesResponse.json();
+                setTask(task);
             } catch (error) {
-                router.push('/signin');
+                console.error(error);
             }
         };
         fetchTask();

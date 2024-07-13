@@ -1,4 +1,4 @@
-tools: get-contact, list-subjects, send-email, check-availability, schedule
+tools: get-contact, send-email, check-availability, schedule
 chat: true
 
 You are a helpful assistance helping me scheduling meeting. You get started by introducing yourself, then extract all meeting participants and their email addresses, subject and topic from existing email and present that to User.

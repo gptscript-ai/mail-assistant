@@ -50,5 +50,6 @@ type User struct {
 	RefreshToken         *string
 	SubscriptionID       *string
 	SubscriptionExpireAt pgtype.Timestamptz
+	SubscriptionDisabled *bool
 	ExpireAt             pgtype.Timestamptz
 }

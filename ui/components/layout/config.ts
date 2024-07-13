@@ -9,7 +9,7 @@ export const navItems = [
     },
     {
         key: 'contexts',
-        title: 'Contexts',
+        title: 'Rule Sets',
         href: '/contexts',
         icon: 'context',
     },
@@ -26,5 +26,6 @@ export const bottomNavItems = [
         key: 'signout',
         title: 'Sign Out',
         icon: 'signout',
+        href: '/signout',
     },
 ] satisfies NavItemConfig[];

@@ -10,111 +10,21 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"ethan/pkg/db"
 	"ethan/pkg/mstoken"
 	"ethan/pkg/tool"
-	"github.com/acorn-io/namegenerator"
 
-	"github.com/google/uuid"
+	"github.com/acorn-io/namegenerator"
 	"github.com/gptscript-ai/go-gptscript"
 	"github.com/gptscript-ai/gptscript/pkg/runner"
 	"github.com/gptscript-ai/gptscript/pkg/types"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
-	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/sirupsen/logrus"
 )
-
-func PerUser(ctx context.Context, queries *db.Queries) {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	if err := ensureSubscriptions(ctx, queries); err != nil {
-		logrus.Error(err)
-	}
-
-	for {
-		select {
-		case <-ticker.C:
-			if err := ensureSubscriptions(ctx, queries); err != nil {
-				logrus.Error(err)
-				continue
-			}
-		}
-	}
-}
-
-func ensureSubscriptions(ctx context.Context, queries *db.Queries) error {
-	users, err := queries.ListUsers(ctx)
-	if err != nil {
-		return err
-	}
-	for _, user := range users {
-		if user.SubscriptionID != nil && (user.SubscriptionExpireAt.Valid && user.SubscriptionExpireAt.Time.After(time.Now())) {
-			continue
-		} else {
-			sID, err := createSubscription(ctx, user)
-			if err != nil {
-				logrus.Error(err)
-				continue
-			}
-			var t pgtype.Timestamptz
-			if err := t.Scan(time.Now().Add(time.Hour * 24)); err != nil {
-				logrus.Error(err)
-				continue
-			}
-			if err := queries.UpdateUser(ctx, db.UpdateUserParams{
-				ID:                   user.ID,
-				Token:                user.Token,
-				RefreshToken:         user.RefreshToken,
-				ExpireAt:             user.ExpireAt,
-				SubscriptionID:       &sID,
-				SubscriptionExpireAt: t,
-			}); err != nil {
-				logrus.Error(err)
-				continue
-			}
-			logrus.Infof("User %v updated with new subscription ID %v", uuid.UUID(user.ID.Bytes).String(), sID)
-		}
-	}
-	return nil
-}
-
-func createSubscription(ctx context.Context, user db.User) (string, error) {
-	cred := mstoken.NewStaticTokenCredential(user.Token)
-	client, err := msgraphsdk.NewGraphServiceClientWithCredentials(cred, []string{})
-	if err != nil {
-		return "", err
-	}
-
-	parts := strings.Split(os.Getenv("EMAIL_RECIPIENT"), ",")
-	var recipients []string
-	for _, part := range parts {
-		recipients = append(recipients, strings.TrimSpace(part))
-	}
-
-	requestBody := graphmodels.NewSubscription()
-	changeType := "created"
-	requestBody.SetChangeType(&changeType)
-	// replace this to production url
-	notificationUrl := os.Getenv("PUBLIC_URL") + "/api/webhook"
-	requestBody.SetNotificationUrl(&notificationUrl)
-	resource := "me/mailFolders('Inbox')/messages"
-	requestBody.SetResource(&resource)
-	expirationDateTime := time.Now().Add(time.Hour * 24)
-	requestBody.SetExpirationDateTime(&expirationDateTime)
-
-	subscription, err := client.Subscriptions().Post(ctx, requestBody, nil)
-	if err != nil {
-		return "", err
-	}
-	return *subscription.GetId(), nil
-}
 
 type Handler struct {
 	queries *db.Queries

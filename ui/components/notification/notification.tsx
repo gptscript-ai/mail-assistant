@@ -17,8 +17,10 @@ import Transitions from '@/components/@extended/Transitions';
 // assets
 import { BellOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import MainCard from '@/components/card/MainCard';
-import MessageList, { Message } from '@/components/notification/messageList';
+import MessageList from '@/components/notification/messageList';
 import { useRouter } from 'next/navigation';
+import { Task } from '@/types/task';
+import { Message } from '@/types/message';
 
 // ==============================|| HEADER CONTENT - NOTIFICATION ||============================== //
 
@@ -75,6 +77,17 @@ export default function Notification() {
             return;
         }
         setOpen(false);
+    };
+
+    const handleReadAllMessage = () => {
+        messages
+            .filter((m) => !m.Read)
+            .forEach((m) => {
+                fetch(`/api/messages/${m.ID}`, {
+                    method: 'POST',
+                });
+            });
+        setRead(0);
     };
 
     const iconBackColorOpen = 'grey.100';
@@ -147,8 +160,8 @@ export default function Notification() {
                                                     <IconButton
                                                         color="success"
                                                         size="small"
-                                                        onClick={() =>
-                                                            setRead(0)
+                                                        onClick={
+                                                            handleReadAllMessage
                                                         }
                                                     >
                                                         <CheckCircleOutlined

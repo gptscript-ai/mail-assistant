@@ -25,6 +25,8 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { useRouter } from 'next/navigation';
 import ContextFormDialog from '@/app/tasks/contextDialog';
+import Badge from '@mui/material/Badge';
+import { Task } from '@/types/task';
 
 interface CustomersTableProps {
     count?: number;
@@ -83,9 +85,8 @@ export function TasksTable({
     const handleRunTaskClick = (id: string) => {
         setMenuAnchorEl(null);
         if (
-            editingTask?.Context &&
-            editingTask?.ContextIds &&
-            editingTask?.ContextIds.length > 0
+            editingTask?.Context ||
+            (editingTask?.ContextIds && editingTask?.ContextIds.length > 0)
         ) {
             router.push(`/task/${id}`);
         } else {
@@ -108,6 +109,7 @@ export function TasksTable({
         }
         await fetchTasks();
         console.log('Task deleted: ', id);
+        setMenuAnchorEl(null);
     };
 
     const handleCloseModal = () => {
@@ -134,6 +136,13 @@ export function TasksTable({
         }
         setIsModalVisible(false);
         fetchTasks();
+    };
+
+    const hasUnreadMessage = (task: Task): boolean => {
+        if (task.Messages && task.Messages.length > 0) {
+            return task.Messages.some((m) => !m.Read);
+        }
+        return false;
     };
 
     const selectedSome =
@@ -203,13 +212,23 @@ export function TasksTable({
                                             'YYYY-MM-DD HH:mm'
                                         )}
                                     </TableCell>
+
                                     <TableCell sx={{ width: '50px' }}>
                                         <IconButton
                                             onClick={(event) =>
                                                 handleMenuOpen(event, row)
                                             }
                                         >
-                                            <MoreVertIcon />
+                                            <Badge
+                                                variant="dot"
+                                                color="error"
+                                                invisible={
+                                                    !hasUnreadMessage(row)
+                                                }
+                                                overlap="circular"
+                                            >
+                                                <MoreVertIcon />
+                                            </Badge>
                                         </IconButton>
                                         <Menu
                                             anchorEl={menuAnchorEl}

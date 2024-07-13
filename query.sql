@@ -28,7 +28,8 @@ set token = $2,
     refresh_token = $3,
     expire_at = $4,
     subscription_id = $5,
-    subscription_expire_at = $6
+    subscription_expire_at = $6,
+    subscription_disabled = $7
 WHERE id = $1;
 
 -- name: DeleteUser :exec
@@ -41,14 +42,11 @@ WHERE id = $1 LIMIT 1;
 
 -- name: GetTaskFromUserID :many
 SELECT * FROM tasks
-WHERE user_id = $1;
+WHERE user_id = $1 ORDER BY created_at DESC;
 
 -- name: GetTaskFromConversationID :one
 SELECT * FROM tasks
 WHERE conversation_id = $1 LIMIT 1;
-
--- name: ListTasks :many
-SELECT * FROM tasks;
 
 -- name: CreateTask :one
 INSERT INTO tasks (
@@ -99,7 +97,11 @@ WHERE message_id = $1 LIMIT 1;
 
 -- name: GetMessageFromUserID :many
 SELECT * FROM messages
-WHERE user_id = $1;
+WHERE user_id = $1 ORDER BY created_at DESC;
+
+-- name: GetMessageFromUserIDAndTaskID :many
+SELECT * FROM messages
+WHERE user_id = $1 and task_id = $2 ORDER BY created_at DESC;
 
 -- name: UpdateMessageRead :exec
 UPDATE messages
@@ -115,7 +117,7 @@ INSERT INTO contexts (
 RETURNING *;
 
 -- name: ListContextsForUser :many
-SELECT * FROM contexts WHERE user_id = $1;
+SELECT * FROM contexts WHERE user_id = $1 ORDER BY created_at DESC;
 
 -- name: UpdateContext :exec
 UPDATE contexts

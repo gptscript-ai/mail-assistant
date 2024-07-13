@@ -73,7 +73,7 @@ const ContextFormModal: React.FC<ContextFormModalProps> = ({
                         variant="h6"
                         component="h2"
                     >
-                        Add New Context
+                        Add Additional Rules
                     </Typography>
                     <Box
                         component="form"

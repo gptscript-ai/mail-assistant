@@ -11,15 +11,9 @@ import { Bell } from '@phosphor-icons/react/dist/ssr/Bell';
 import { BellRinging } from '@phosphor-icons/react/dist/ssr/BellRinging';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
-
-export interface Message {
-    ID: string;
-    TaskID: string;
-    TaskName: string;
-    CreatedAt: Date;
-    Content: string;
-    Read: boolean;
-}
+import { Message } from '@/types/message';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import Badge from '@mui/material/Badge';
 
 interface MessageListProps {
     messages: Message[];
@@ -50,12 +44,11 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
     };
 
     const handleMessageClick = async (m: Message) => {
-        const response = await fetch(`/api/messages/${m.ID}`, {
+        await fetch(`/api/messages/${m.ID}`, {
             method: 'POST',
         });
 
         const path = window.location.pathname;
-        console.log(path);
 
         if (path === `/task/${m.TaskID}`) {
             window.location.reload();
@@ -107,11 +100,14 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                                     color: 'primary.main',
                                 }}
                             >
-                                {message.Read ? (
-                                    <Bell size={24} />
-                                ) : (
+                                <Badge
+                                    variant="dot"
+                                    color="error"
+                                    invisible={message.Read}
+                                    overlap="circular"
+                                >
                                     <BellRinging size={24} />
-                                )}
+                                </Badge>
                             </Avatar>
                         </ListItemAvatar>
                         <ListItem

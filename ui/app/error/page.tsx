@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ArrowLeft as ArrowLeftIcon } from '@phosphor-icons/react/dist/ssr/ArrowLeft';
 
-export default function NotFound(): React.JSX.Element {
+export default function Page(): React.JSX.Element {
     return (
         <Box
             component="main"

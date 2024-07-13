@@ -1,71 +1,151 @@
 'use client';
-import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Unstable_Grid2';
 import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
-import Divider from '@mui/material/Divider';
 
 import { User } from '@/types/user';
 import { getUser } from '@/utils/getUser';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
+import { Alert, Snackbar, Switch } from '@mui/material';
 
 const Account: React.FC = () => {
-    const [user, setUser] = React.useState<User | null>(null);
+    const [open, setOpen] = useState(false);
+    const [user, setUser] = useState<User | null>(null);
+    const [subscriptionEnabled, setSubscriptionEnabled] = useState(false);
 
     useEffect(() => {
         getUser()
             .then((user) => {
                 setUser(user);
+                setSubscriptionEnabled(!user.subscriptionDisabled);
             })
             .catch();
     }, []);
+
+    const handleToggleSubscription = async () => {
+        const response = await fetch('/api/me', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                subscriptionDisabled: subscriptionEnabled,
+            }),
+        });
+        setSubscriptionEnabled(!subscriptionEnabled);
+        setOpen(true);
+    };
+
+    const handleClose = (
+        event: React.SyntheticEvent | Event,
+        reason?: string
+    ) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+
+        setOpen(false);
+    };
+
     return (
-        <Stack spacing={3}>
-            <div>
-                <Typography variant="h4">Account</Typography>
-            </div>
-            <Grid container spacing={3}>
-                <Grid lg={4} md={6} xs={12}>
-                    <Card>
-                        <CardContent>
-                            <Stack spacing={2} sx={{ alignItems: 'center' }}>
-                                <div>
-                                    <Avatar
-                                        src={user?.avatar}
-                                        sx={{
-                                            height: '80px',
-                                            width: '80px',
-                                        }}
-                                    />
-                                </div>
-                                <Stack spacing={1} sx={{ textAlign: 'center' }}>
-                                    <Typography variant="h5">
-                                        {user?.name}
-                                    </Typography>
-                                    <Typography
-                                        color="text.secondary"
-                                        variant="body2"
+        <Box
+            sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: '100vh',
+                padding: 3,
+            }}
+        >
+            <Stack spacing={3} sx={{ width: '100%', maxWidth: 1200 }}>
+                <Grid
+                    container
+                    spacing={3}
+                    sx={{
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}
+                >
+                    <Grid lg={8} md={12} xs={24}>
+                        <Grid container sx={{ mb: '20px' }}>
+                            <Typography variant="h4">Account</Typography>
+                        </Grid>
+                        <Card>
+                            <CardContent>
+                                <Stack
+                                    spacing={2}
+                                    sx={{ alignItems: 'center' }}
+                                >
+                                    <div>
+                                        <Avatar
+                                            src={user?.avatar}
+                                            sx={{
+                                                height: '80px',
+                                                width: '80px',
+                                            }}
+                                        />
+                                    </div>
+                                    <Stack
+                                        spacing={1}
+                                        sx={{ textAlign: 'center' }}
                                     >
-                                        {user?.email}
-                                    </Typography>
+                                        <Typography variant="h5">
+                                            {user?.name}
+                                        </Typography>
+                                        <Typography
+                                            color="text.secondary"
+                                            variant="body2"
+                                        >
+                                            {user?.email}
+                                        </Typography>
+                                        <Tooltip title="Disabling will stop watching all your messages from inbox">
+                                            <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                justifyContent="space-between"
+                                                width="100%"
+                                            >
+                                                <Typography variant="h6">
+                                                    Subscription Enabled
+                                                </Typography>
+                                                <Switch
+                                                    checked={
+                                                        subscriptionEnabled
+                                                    }
+                                                    onChange={
+                                                        handleToggleSubscription
+                                                    }
+                                                    color="primary"
+                                                />
+                                            </Stack>
+                                        </Tooltip>
+                                    </Stack>
                                 </Stack>
-                            </Stack>
-                        </CardContent>
-                        <Divider />
-                        <CardActions>
-                            <Button fullWidth variant="text">
-                                Upload picture
-                            </Button>
-                        </CardActions>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </Grid>
                 </Grid>
-            </Grid>
-        </Stack>
+            </Stack>
+            <Snackbar
+                open={open}
+                autoHideDuration={3000}
+                onClose={handleClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={handleClose}
+                    severity="success"
+                    sx={{ width: '100%' }}
+                >
+                    Saved successfully!
+                </Alert>
+            </Snackbar>
+        </Box>
     );
 };
 

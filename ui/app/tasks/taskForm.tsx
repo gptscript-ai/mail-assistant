@@ -70,7 +70,6 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        console.log(taskContextIds);
         onSubmit(
             taskName,
             taskDescription,
@@ -131,7 +130,6 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
                         />
                         <TextField
                             margin="normal"
-                            required
                             fullWidth
                             name="taskDescription"
                             label="Task Description"
@@ -143,12 +141,12 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
                         />
                         <FormControl fullWidth margin="normal">
                             <InputLabel id="taskContext-label">
-                                Task Context
+                                Rule Sets
                             </InputLabel>
                             <Select
                                 labelId="taskContext-label"
                                 id="taskContext"
-                                label="Task Context"
+                                label="Rule Sets"
                                 multiple
                                 value={taskContextIds}
                                 onChange={handleContextChange}
@@ -204,8 +202,8 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 sx={{ mt: 2 }}
                             >
                                 {showNewContext
-                                    ? 'Hide New Context'
-                                    : 'Add New Context'}
+                                    ? 'Hide Additional Rules'
+                                    : 'Add Additional Rules'}
                             </Button>
                         )}
 
@@ -245,14 +243,6 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
                         )}
                         <Stack direction="row" spacing={2}>
                             <Button
-                                type="submit"
-                                fullWidth
-                                variant="contained"
-                                sx={{ mt: 3, mb: 2 }}
-                            >
-                                {create ? 'Create' : 'Update'}
-                            </Button>
-                            <Button
                                 type="reset"
                                 fullWidth
                                 color="error"
@@ -261,6 +251,14 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 sx={{ mt: 3, mb: 2 }}
                             >
                                 Close
+                            </Button>
+                            <Button
+                                type="submit"
+                                fullWidth
+                                variant="contained"
+                                sx={{ mt: 3, mb: 2 }}
+                            >
+                                {create ? 'Create' : 'Update'}
                             </Button>
                         </Stack>
                     </Box>

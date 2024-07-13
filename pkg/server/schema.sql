@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     refresh_token text,
     subscription_id text,
     subscription_expire_at TIMESTAMPTZ,
+    subscription_disabled boolean,
     expire_at TIMESTAMPTZ
 );
 

@@ -2,12 +2,11 @@
 
 import * as React from 'react';
 import RouterLink from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { SignOut } from '@phosphor-icons/react/dist/ssr/SignOut';
 
 import type { NavItemConfig } from '@/types/nav';
 import { isNavItemActive } from '@/lib/is-nav-item-active';
@@ -82,7 +81,6 @@ function renderNavItems({
     const children = items.reduce(
         (acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
             const { key, ...item } = curr;
-
             acc.push(<NavItem key={key} pathname={pathname} {...item} />);
 
             return acc;
@@ -122,6 +120,7 @@ function NavItem({
         pathname,
     });
     const Icon = icon ? navIcons[icon] : null;
+    const router = useRouter();
 
     return (
         <li>

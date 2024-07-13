@@ -2,7 +2,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeExternalLinks from 'rehype-external-links';
 import { Avatar, Tooltip } from '@nextui-org/react';
-import { Message, MessageType } from '@/types/message';
+import { ChatMessage, MessageType } from '@/types/message';
 
 const abbreviate = (name: string) => {
     const words = name.split(/(?=[A-Z])|[\s_-]/);
@@ -10,7 +10,13 @@ const abbreviate = (name: string) => {
     return firstLetters.slice(0, 2).join('').toUpperCase();
 };
 
-const M = ({ message, noAvatar }: { message: Message; noAvatar?: boolean }) => {
+const M = ({
+    message,
+    noAvatar,
+}: {
+    message: ChatMessage;
+    noAvatar?: boolean;
+}) => {
     switch (message.type) {
         case MessageType.User:
             return (
@@ -80,7 +86,7 @@ const Messages = ({
     messages,
     noAvatar,
 }: {
-    messages: Message[];
+    messages: ChatMessage[];
     noAvatar?: boolean;
 }) => (
     <div>

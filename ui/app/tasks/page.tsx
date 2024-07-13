@@ -6,22 +6,18 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Plus as PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import { MinusCircle as MinusIcon } from '@phosphor-icons/react/dist/ssr/MinusCircle';
-import { Play as PlayIcon } from '@phosphor-icons/react/dist/ssr/Play';
 
 import Card from '@mui/material/Card';
 import InputAdornment from '@mui/material/InputAdornment';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import TaskFormModal from '@/app/tasks/taskForm';
 import { TasksTable } from '@/app/tasks/taskTable';
-import { useTheme } from '@mui/material/styles';
-import ContextFormDialog from '@/app/tasks/contextDialog';
+import { Task } from '@/types/task';
+import { Message } from '@/types/message';
 
 export default function Page(): React.JSX.Element {
-    const theme = useTheme();
-    const router = useRouter();
     const page = 0;
     const rowsPerPage = 5;
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -56,19 +52,34 @@ export default function Page(): React.JSX.Element {
         setIsModalVisible(false);
     };
 
+    const assignMessagesToTasks = (
+        tasks: Task[],
+        messages: Message[]
+    ): Task[] => {
+        const taskMap: { [key: string]: Task } = {};
+
+        tasks?.forEach((task) => {
+            task.Messages = [];
+            taskMap[task.ID] = task;
+        });
+
+        messages?.forEach((message) => {
+            const task = taskMap[message.TaskID];
+            if (task) {
+                task.Messages.push(message);
+            }
+        });
+
+        return tasks;
+    };
+
     const fetchTasks = async () => {
         try {
-            const response = await fetch('/api/tasks');
-            let tasks: Task[] = await response.json();
-            tasks = tasks?.sort((a, b) => {
-                if (a.CreatedAt < b.CreatedAt) {
-                    return -1;
-                }
-                if (a.CreatedAt > b.CreatedAt) {
-                    return 1;
-                }
-                return 0;
-            });
+            const taskResponse = await fetch('/api/tasks');
+            let tasks: Task[] = await taskResponse.json();
+            const messageResponse = await fetch('/api/messages');
+            let messages: Message[] = await messageResponse.json();
+            tasks = assignMessagesToTasks(tasks, messages);
             setTasks(tasks);
         } catch (error) {
             console.error(error);

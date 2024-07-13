@@ -76,18 +76,18 @@ const ContextFormDialog: React.FC<ContextFormModalProps> = ({
                 },
             }}
         >
-            <DialogTitle>Context</DialogTitle>
+            <DialogTitle>Rules</DialogTitle>
             <DialogContent>
                 <DialogContentText>
-                    Looks like you did not setup context for this task. Do you
-                    want to select existing context or add a new one?
+                    Looks like you did not setup any rules for this task. Do you
+                    want to select existing rule sets or add additional rules?
                 </DialogContentText>
                 <FormControl fullWidth margin="normal">
-                    <InputLabel id="taskContext-label">Task Context</InputLabel>
+                    <InputLabel id="taskContext-label">Rule Sets</InputLabel>
                     <Select
                         labelId="taskContext-label"
                         id="taskContext"
-                        label="Task Context"
+                        label="Rule Sets"
                         multiple
                         value={taskContextIds}
                         onChange={handleContextChange}
@@ -131,7 +131,9 @@ const ContextFormDialog: React.FC<ContextFormModalProps> = ({
                     onClick={toggleNewContext}
                     sx={{ mt: 2 }}
                 >
-                    {showNewContext ? 'Hide New Context' : 'Add New Context'}
+                    {showNewContext
+                        ? 'Hide Additional Rules'
+                        : 'Add Additional Rules'}
                 </Button>
                 {showNewContext && (
                     <TextField

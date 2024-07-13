@@ -129,7 +129,7 @@ INSERT INTO users (
 ) VALUES (
              $1, $2, $3, $4, $5
          )
-RETURNING id, name, email, token, refresh_token, subscription_id, subscription_expire_at, expire_at
+RETURNING id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at
 `
 
 type CreateUserParams struct {
@@ -157,6 +157,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.RefreshToken,
 		&i.SubscriptionID,
 		&i.SubscriptionExpireAt,
+		&i.SubscriptionDisabled,
 		&i.ExpireAt,
 	)
 	return i, err
@@ -233,11 +234,49 @@ func (q *Queries) GetMessageFromMessageID(ctx context.Context, messageID *string
 
 const getMessageFromUserID = `-- name: GetMessageFromUserID :many
 SELECT id, message_id, task_id, content, user_id, created_at, read FROM messages
-WHERE user_id = $1
+WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) GetMessageFromUserID(ctx context.Context, userID pgtype.UUID) ([]Message, error) {
 	rows, err := q.db.Query(ctx, getMessageFromUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.MessageID,
+			&i.TaskID,
+			&i.Content,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.Read,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMessageFromUserIDAndTaskID = `-- name: GetMessageFromUserIDAndTaskID :many
+SELECT id, message_id, task_id, content, user_id, created_at, read FROM messages
+WHERE user_id = $1 and task_id = $2 ORDER BY created_at DESC
+`
+
+type GetMessageFromUserIDAndTaskIDParams struct {
+	UserID pgtype.UUID
+	TaskID pgtype.UUID
+}
+
+func (q *Queries) GetMessageFromUserIDAndTaskID(ctx context.Context, arg GetMessageFromUserIDAndTaskIDParams) ([]Message, error) {
+	rows, err := q.db.Query(ctx, getMessageFromUserIDAndTaskID, arg.UserID, arg.TaskID)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +355,7 @@ func (q *Queries) GetTaskFromConversationID(ctx context.Context, conversationID 
 
 const getTaskFromUserID = `-- name: GetTaskFromUserID :many
 SELECT id, name, description, tool_definition, context, created_at, user_id, message_id, message_body, conversation_id, context_ids, state FROM tasks
-WHERE user_id = $1
+WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) GetTaskFromUserID(ctx context.Context, userID pgtype.UUID) ([]Task, error) {
@@ -353,7 +392,7 @@ func (q *Queries) GetTaskFromUserID(ctx context.Context, userID pgtype.UUID) ([]
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -368,13 +407,14 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.RefreshToken,
 		&i.SubscriptionID,
 		&i.SubscriptionExpireAt,
+		&i.SubscriptionDisabled,
 		&i.ExpireAt,
 	)
 	return i, err
 }
 
 const getUserFromEmail = `-- name: GetUserFromEmail :one
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -389,13 +429,14 @@ func (q *Queries) GetUserFromEmail(ctx context.Context, email string) (User, err
 		&i.RefreshToken,
 		&i.SubscriptionID,
 		&i.SubscriptionExpireAt,
+		&i.SubscriptionDisabled,
 		&i.ExpireAt,
 	)
 	return i, err
 }
 
 const getUserFromSubscriptionID = `-- name: GetUserFromSubscriptionID :one
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
 WHERE subscription_id = $1 LIMIT 1
 `
 
@@ -410,13 +451,14 @@ func (q *Queries) GetUserFromSubscriptionID(ctx context.Context, subscriptionID 
 		&i.RefreshToken,
 		&i.SubscriptionID,
 		&i.SubscriptionExpireAt,
+		&i.SubscriptionDisabled,
 		&i.ExpireAt,
 	)
 	return i, err
 }
 
 const listContextsForUser = `-- name: ListContextsForUser :many
-SELECT id, name, description, content, user_id, created_at FROM contexts WHERE user_id = $1
+SELECT id, name, description, content, user_id, created_at FROM contexts WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListContextsForUser(ctx context.Context, userID pgtype.UUID) ([]Context, error) {
@@ -446,45 +488,8 @@ func (q *Queries) ListContextsForUser(ctx context.Context, userID pgtype.UUID) (
 	return items, nil
 }
 
-const listTasks = `-- name: ListTasks :many
-SELECT id, name, description, tool_definition, context, created_at, user_id, message_id, message_body, conversation_id, context_ids, state FROM tasks
-`
-
-func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
-	rows, err := q.db.Query(ctx, listTasks)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Task
-	for rows.Next() {
-		var i Task
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.ToolDefinition,
-			&i.Context,
-			&i.CreatedAt,
-			&i.UserID,
-			&i.MessageID,
-			&i.MessageBody,
-			&i.ConversationID,
-			&i.ContextIds,
-			&i.State,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
 ORDER BY name
 `
 
@@ -505,6 +510,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.RefreshToken,
 			&i.SubscriptionID,
 			&i.SubscriptionExpireAt,
+			&i.SubscriptionDisabled,
 			&i.ExpireAt,
 		); err != nil {
 			return nil, err
@@ -635,7 +641,8 @@ set token = $2,
     refresh_token = $3,
     expire_at = $4,
     subscription_id = $5,
-    subscription_expire_at = $6
+    subscription_expire_at = $6,
+    subscription_disabled = $7
 WHERE id = $1
 `
 
@@ -646,6 +653,7 @@ type UpdateUserParams struct {
 	ExpireAt             pgtype.Timestamptz
 	SubscriptionID       *string
 	SubscriptionExpireAt pgtype.Timestamptz
+	SubscriptionDisabled *bool
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -656,6 +664,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.ExpireAt,
 		arg.SubscriptionID,
 		arg.SubscriptionExpireAt,
+		arg.SubscriptionDisabled,
 	)
 	return err
 }

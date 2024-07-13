@@ -81,8 +81,9 @@ func main() {
 	// Webhook
 	apiRouter.HandleFunc("/webhook", subscribeHandler.Subscribe)
 
-	// Me
-	apiRouter.HandleFunc("/me", auth.Middleware(authHandler.HandleMe))
+	// User
+	apiRouter.HandleFunc("/me", auth.Middleware(authHandler.HandleMe)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/me", auth.Middleware(authHandler.UpdateUser)).Methods(http.MethodPost)
 
 	// Task
 	apiRouter.HandleFunc("/tasks", auth.Middleware(taskHandler.ListTasks)).Methods(http.MethodGet)
