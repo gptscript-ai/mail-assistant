@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"ethan/pkg/db"
+	"ethan/pkg/server/connection"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/gptscript-ai/go-gptscript"
@@ -70,6 +72,10 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+
+	taskIDString := uuid.UUID(taskID.Bytes).String()
+	connection.SetConn(taskIDString, conn)
+	defer connection.RemoveConn(taskIDString)
 
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
@@ -201,12 +207,10 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			fmt.Println("Iam waiting")
 			messageType, m, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
-			fmt.Println("Done")
 
 			switch messageType {
 			case websocket.TextMessage:

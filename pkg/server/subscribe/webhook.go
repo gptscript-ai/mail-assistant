@@ -13,7 +13,9 @@ import (
 
 	"ethan/pkg/db"
 	"ethan/pkg/mstoken"
+	"ethan/pkg/server/connection"
 	"ethan/pkg/tool"
+	"github.com/google/uuid"
 
 	"github.com/acorn-io/namegenerator"
 	"github.com/gptscript-ai/go-gptscript"
@@ -229,6 +231,9 @@ If all the participants have replied, ask user about the next step. If not, remi
 				logrus.Error(fmt.Errorf("failed to update task state: %w", err))
 				return
 			}
+
+			// Manually close possible active connection to resume task, so that user get latest information
+			connection.CloseConn(uuid.UUID(task.ID.Bytes).String())
 		}
 	}
 }
