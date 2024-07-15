@@ -2,6 +2,7 @@ package subscribe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,7 +60,15 @@ func ensureSubscriptionsForUser(ctx context.Context, user db.User, queries *db.Q
 			}
 
 			if err := client.Subscriptions().BySubscriptionId(*user.SubscriptionID).Delete(ctx, nil); err != nil {
-				return err
+				var e *odataerrors.ODataError
+				switch {
+				case errors.As(err, &e):
+					if e.ApiError.ResponseStatusCode == 404 {
+						break
+					}
+				default:
+					return err
+				}
 			}
 			logrus.Infof("Subscription %v deleted for user %v", *user.SubscriptionID, uuid.UUID(user.ID.Bytes).String())
 			if err := queries.UpdateUser(ctx, db.UpdateUserParams{
@@ -68,6 +78,7 @@ func ensureSubscriptionsForUser(ctx context.Context, user db.User, queries *db.Q
 				ExpireAt:             user.ExpireAt,
 				SubscriptionID:       nil,
 				SubscriptionExpireAt: pgtype.Timestamptz{},
+				SubscriptionDisabled: user.SubscriptionDisabled,
 			}); err != nil {
 				return err
 			}
@@ -88,6 +99,7 @@ func ensureSubscriptionsForUser(ctx context.Context, user db.User, queries *db.Q
 			ExpireAt:             user.ExpireAt,
 			SubscriptionID:       &subscriptionID,
 			SubscriptionExpireAt: t,
+			SubscriptionDisabled: user.SubscriptionDisabled,
 		}); err != nil {
 			return err
 		}
@@ -112,7 +124,6 @@ func createSubscription(ctx context.Context, user db.User) (string, time.Time, e
 	requestBody := graphmodels.NewSubscription()
 	changeType := "created"
 	requestBody.SetChangeType(&changeType)
-	// replace this to production url
 	notificationUrl := os.Getenv("PUBLIC_URL") + "/api/webhook"
 	requestBody.SetNotificationUrl(&notificationUrl)
 	resource := "me/mailFolders('Inbox')/messages"

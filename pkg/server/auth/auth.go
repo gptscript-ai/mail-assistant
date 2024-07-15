@@ -209,11 +209,13 @@ func (h *Handler) saveUserInfo(ctx context.Context, state string, code string) (
 		return db.User{}, fmt.Errorf("failed to get user: %w", err)
 	} else {
 		if err := h.queries.UpdateUser(ctx, db.UpdateUserParams{
-			ID:             user.ID,
-			Token:          token.AccessToken,
-			RefreshToken:   &token.RefreshToken,
-			ExpireAt:       t,
-			SubscriptionID: user.SubscriptionID,
+			ID:                   user.ID,
+			Token:                token.AccessToken,
+			RefreshToken:         &token.RefreshToken,
+			ExpireAt:             t,
+			SubscriptionID:       user.SubscriptionID,
+			SubscriptionExpireAt: user.SubscriptionExpireAt,
+			SubscriptionDisabled: user.SubscriptionDisabled,
 		}); err != nil {
 			return db.User{}, fmt.Errorf("failed to update user token: %w", err)
 		}

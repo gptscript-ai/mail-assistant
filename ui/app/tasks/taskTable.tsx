@@ -17,7 +17,7 @@ import { Trash as TrashIcon } from '@phosphor-icons/react/dist/ssr/Trash';
 import { Pencil as PencilIcon } from '@phosphor-icons/react/dist/ssr/Pencil';
 
 import { useSelection } from '@/hooks/use-selection';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import TaskFormModal from '@/app/tasks/taskForm';
 import IconButton from '@mui/material/IconButton';
 import { ListItemText, Menu } from '@mui/material';
@@ -29,25 +29,23 @@ import Badge from '@mui/material/Badge';
 import { Task } from '@/types/task';
 
 interface CustomersTableProps {
-    count?: number;
-    page?: number;
     rows?: Task[];
-    rowsPerPage?: number;
     selectedIds: Set<string>;
     setSelectedIds: any;
     contexts: Context[];
     fetchTasks: () => Promise<void>;
 }
 
-function noop(): void {
-    // do nothing
+function applyPagination(
+    rows: Task[],
+    page: number,
+    rowsPerPage: number
+): Task[] {
+    return rows?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }
 
 export function TasksTable({
-    count = 0,
     rows = [],
-    page = 0,
-    rowsPerPage = 0,
     selectedIds,
     setSelectedIds,
     contexts,
@@ -65,6 +63,22 @@ export function TasksTable({
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
     const [editingTask, setEditingTask] = useState<Task>();
     const [showContextDialog, setShowContextDialog] = useState(false);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(5);
+    const [renderedTasks, setRenderedTasks] = useState<Task[]>([]);
+
+    useEffect(() => {
+        setRenderedTasks(applyPagination(rows, page, rowsPerPage));
+    }, [rows, page, rowsPerPage]);
+
+    const handleChangePage = (event: any, newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: any) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     const handleMenuOpen = (
         event: React.MouseEvent<HTMLElement>,
@@ -88,7 +102,7 @@ export function TasksTable({
             editingTask?.Context ||
             (editingTask?.ContextIds && editingTask?.ContextIds.length > 0)
         ) {
-            router.push(`/task/${id}`);
+            router.push(`/task/${editingTask.ID}`);
         } else {
             setShowContextDialog(true);
         }
@@ -99,8 +113,8 @@ export function TasksTable({
         setMenuAnchorEl(null);
     };
 
-    const handleDeleteTaskClick = async (id: string) => {
-        const response = await fetch(`/api/tasks/${id}`, {
+    const handleDeleteTaskClick = async () => {
+        const response = await fetch(`/api/tasks/${editingTask?.ID}`, {
             method: 'DELETE',
         });
 
@@ -108,7 +122,6 @@ export function TasksTable({
             throw new Error('Failed to delete task');
         }
         await fetchTasks();
-        console.log('Task deleted: ', id);
         setMenuAnchorEl(null);
     };
 
@@ -174,7 +187,7 @@ export function TasksTable({
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {rows.map((row) => {
+                        {renderedTasks.map((row) => {
                             const isSelected = selected?.has(row.ID);
 
                             return (
@@ -282,10 +295,10 @@ export function TasksTable({
             <Divider />
             <TablePagination
                 component="div"
-                count={count}
+                count={rows.length}
                 page={page}
-                onPageChange={noop}
-                onRowsPerPageChange={noop}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={[5, 10, 25]}
             />

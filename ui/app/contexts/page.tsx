@@ -19,7 +19,7 @@ import { ContextsTable } from '@/app/contexts/contextTable';
 export default function Page(): React.JSX.Element {
     const router = useRouter();
     const page = 0;
-    const rowsPerPage = 5;
+    const rowsPerPage = 15;
     const [contexts, setContexts] = useState<Context[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
@@ -159,8 +159,6 @@ export default function Page(): React.JSX.Element {
             </Card>
             {renderedContexts && (
                 <ContextsTable
-                    count={renderedContexts.length}
-                    page={page}
                     rows={renderedContexts}
                     rowsPerPage={rowsPerPage}
                     selectedIds={selected}

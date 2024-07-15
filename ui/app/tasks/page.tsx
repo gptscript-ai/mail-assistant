@@ -18,8 +18,6 @@ import { Task } from '@/types/task';
 import { Message } from '@/types/message';
 
 export default function Page(): React.JSX.Element {
-    const page = 0;
-    const rowsPerPage = 5;
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
@@ -149,8 +147,6 @@ export default function Page(): React.JSX.Element {
         setInterval(() => fetchContexts(), 10000);
     }, []);
 
-    const renderedTasks = applyPagination(tasks, page, rowsPerPage);
-
     return (
         <Stack spacing={3}>
             <Stack direction="row" spacing={3}>
@@ -201,12 +197,9 @@ export default function Page(): React.JSX.Element {
                     sx={{ maxWidth: '500px' }}
                 />
             </Card>
-            {renderedTasks && (
+            {tasks && (
                 <TasksTable
-                    count={renderedTasks.length}
-                    page={page}
-                    rows={renderedTasks}
-                    rowsPerPage={rowsPerPage}
+                    rows={tasks}
                     selectedIds={selected}
                     setSelectedIds={setSelected}
                     fetchTasks={fetchTasks}
@@ -222,12 +215,4 @@ export default function Page(): React.JSX.Element {
             />
         </Stack>
     );
-}
-
-function applyPagination(
-    rows: Task[],
-    page: number,
-    rowsPerPage: number
-): Task[] {
-    return rows?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }

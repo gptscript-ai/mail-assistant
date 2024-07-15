@@ -13,12 +13,11 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import dayjs from 'dayjs';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { Play as PlayIcon } from '@phosphor-icons/react/dist/ssr/Play';
 import { Trash as TrashIcon } from '@phosphor-icons/react/dist/ssr/Trash';
 import { Pencil as PencilIcon } from '@phosphor-icons/react/dist/ssr/Pencil';
 
 import { useSelection } from '@/hooks/use-selection';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ContextFormModal from '@/app/contexts/contextForm';
 import IconButton from '@mui/material/IconButton';
 import { ListItemText, Menu } from '@mui/material';
@@ -27,8 +26,6 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import { useRouter } from 'next/navigation';
 
 interface CustomersTableProps {
-    count?: number;
-    page?: number;
     rows?: Context[];
     rowsPerPage?: number;
     selectedIds: Set<string>;
@@ -36,15 +33,16 @@ interface CustomersTableProps {
     fetchContexts: () => Promise<void>;
 }
 
-function noop(): void {
-    // do nothing
+function applyPagination(
+    rows: Context[],
+    page: number,
+    rowsPerPage: number
+): Context[] {
+    return rows?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }
 
 export function ContextsTable({
-    count = 0,
     rows = [],
-    page = 0,
-    rowsPerPage = 0,
     selectedIds,
     setSelectedIds,
     // @ts-ignore
@@ -60,6 +58,22 @@ export function ContextsTable({
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
     const [editingContext, setEditingContext] = useState<Context>();
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(5);
+    const [renderedContexts, setRenderedContexts] = useState<Context[]>([]);
+
+    useEffect(() => {
+        setRenderedContexts(applyPagination(rows, page, rowsPerPage));
+    }, [rows, page, rowsPerPage]);
+
+    const handleChangePage = (event: any, newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: any) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     const handleMenuOpen = (
         event: React.MouseEvent<HTMLElement>,
@@ -144,7 +158,7 @@ export function ContextsTable({
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {rows.map((row) => {
+                        {renderedContexts.map((row) => {
                             const isSelected = selected?.has(row.ID);
 
                             return (
@@ -234,10 +248,10 @@ export function ContextsTable({
             <Divider />
             <TablePagination
                 component="div"
-                count={count}
+                count={rows.length}
                 page={page}
-                onPageChange={noop}
-                onRowsPerPageChange={noop}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={[5, 10, 25]}
             />

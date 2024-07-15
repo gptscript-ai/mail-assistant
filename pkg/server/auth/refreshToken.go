@@ -51,13 +51,15 @@ func RefreshToken(ctx context.Context, queries *db.Queries) {
 						continue
 					}
 					if err := queries.UpdateUser(ctx, db.UpdateUserParams{
-						ID:             user.ID,
-						Token:          token.AccessToken,
-						RefreshToken:   &token.RefreshToken,
-						ExpireAt:       t,
-						SubscriptionID: user.SubscriptionID,
+						ID:                   user.ID,
+						Token:                token.AccessToken,
+						RefreshToken:         &token.RefreshToken,
+						ExpireAt:             t,
+						SubscriptionID:       user.SubscriptionID,
+						SubscriptionExpireAt: user.SubscriptionExpireAt,
+						SubscriptionDisabled: user.SubscriptionDisabled,
 					}); err != nil {
-						logrus.Error(err)
+						logrus.Error(fmt.Errorf("failed to update user after token refresh: %w", err))
 						continue
 					}
 					logrus.Infof("User %v updated", uuid.UUID(user.ID.Bytes).String())

@@ -29,7 +29,6 @@ func (c *GetContact) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// todo: do server side filtering
 	contacts := result.GetValue()
 	var ret []output
 	for _, contact := range contacts {

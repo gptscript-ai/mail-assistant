@@ -13,6 +13,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import { useRouter } from 'next/navigation';
+import { Task } from '@/types/task';
 
 interface ContextFormModalProps {
     open: boolean;

@@ -15,6 +15,7 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Checkbox from '@mui/material/Checkbox';
 import Select from '@mui/material/Select';
+import { Task } from '@/types/task';
 
 const style = {
     position: 'absolute' as 'absolute',
