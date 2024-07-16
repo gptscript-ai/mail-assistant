@@ -1,82 +1,65 @@
 import { useState } from 'react';
-import { GoNote } from 'react-icons/go';
 import StackTrace from './stackTrace';
 import type { CallFrame } from '@gptscript-ai/gptscript';
 import { IoCloseSharp } from 'react-icons/io5';
-import { BsArrowsFullscreen } from 'react-icons/bs';
-import { HiOutlineArrowsPointingIn } from 'react-icons/hi2';
-import {
-    Modal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    Button,
-    Tooltip,
-} from '@nextui-org/react';
+import Tooltip from '@mui/material/Tooltip';
+import Button from '@mui/material/Button';
+import { Modal } from '@mui/material';
+import Box from '@mui/material/Box';
+import { Note } from '@phosphor-icons/react/dist/ssr/Note';
+import { Wrench } from '@phosphor-icons/react/dist/ssr/Wrench';
+import Stack from '@mui/material/Stack';
+import IconButton from '@mui/material/IconButton';
 
 const Calls = ({ calls }: { calls: Record<string, CallFrame> }) => {
     const [showModal, setShowModal] = useState(false);
     const [fullscreen, setFullscreen] = useState(false);
+    console.log(calls);
+
+    const onClose = () => {
+        setShowModal(false);
+    };
 
     return (
-        <div>
-            <Tooltip content="View stack trace" closeDelay={0.5}>
-                <Button
-                    onPress={() => setShowModal(true)}
-                    isIconOnly
-                    radius="full"
-                >
-                    <GoNote />
-                </Button>
+        <Stack direction="row" spacing={1}>
+            {/*{calls && Object.keys(calls).length > 0 && (*/}
+            {/*    <Tooltip title="Tool Call successfully">*/}
+            {/*        <Wrench size={20} />*/}
+            {/*    </Tooltip>*/}
+            {/*)}*/}
+            <Tooltip
+                title="View stack trace"
+                sx={{
+                    '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.1)', // Example hover effect
+                        transition: 'background-color 0.3s ease',
+                    },
+                }}
+            >
+                <IconButton onClick={() => setShowModal(true)}>
+                    <Note size={20} />
+                </IconButton>
             </Tooltip>
             <Modal
-                isOpen={showModal}
-                onOpenChange={setShowModal}
-                hideCloseButton={true}
-                size={fullscreen ? 'full' : '3xl'}
-                className={fullscreen ? '' : 'h-4/5'}
+                open={showModal}
+                onClose={onClose}
+                className="flex items-center justify-center"
             >
-                <ModalContent>
-                    <ModalHeader className="flex justify-between">
-                        <div>
-                            <h1 className="text-2xl my-4">Stack Trace</h1>
-                            <h2 className="text-base text-zinc-500">
-                                Below you can see what this call is doing or has
-                                done.
-                            </h2>
-                        </div>
-                        <div>
-                            <Button
-                                radius="full"
-                                size="sm"
-                                isIconOnly
-                                color="primary"
-                                onPress={(_) => setShowModal(false)}
-                            >
-                                <IoCloseSharp />
-                            </Button>
-                            <Button
-                                radius="full"
-                                size="sm"
-                                isIconOnly
-                                color="primary"
-                                className="ml-2"
-                                onPress={(_) => setFullscreen(!fullscreen)}
-                            >
-                                {fullscreen ? (
-                                    <HiOutlineArrowsPointingIn className="text-lg" />
-                                ) : (
-                                    <BsArrowsFullscreen />
-                                )}
-                            </Button>
-                        </div>
-                    </ModalHeader>
-                    <ModalBody className="mb-4 h-full overflow-y-scroll">
+                <Box className="bg-white rounded-lg p-4 w-full max-w-md mx-auto h-4/5">
+                    <Box>
+                        <Button
+                            color="primary"
+                            onClick={() => setShowModal(false)}
+                        >
+                            <IoCloseSharp />
+                        </Button>
+                    </Box>
+                    {calls && Object.keys(calls).length > 0 && (
                         <StackTrace calls={calls} />
-                    </ModalBody>
-                </ModalContent>
+                    )}
+                </Box>
             </Modal>
-        </div>
+        </Stack>
     );
 };
 

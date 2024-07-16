@@ -7,12 +7,15 @@ import (
 	"strings"
 
 	"ethan/pkg/mstoken"
+	"github.com/sirupsen/logrus"
+
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
+	"github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/spf13/cobra"
 )
 
 type output struct {
-	Name string `json:"name"`
+	Name  string `json:"name"`
 	Email string `json:"email"`
 }
 
@@ -25,25 +28,58 @@ func (c *GetContact) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var ret []output
+	for _, name := range strings.Split(os.Getenv("EMAIL_RECIPIENT_NAMES"), ",") {
+		config := &users.ItemPeopleRequestBuilderGetRequestConfiguration{
+			QueryParameters: &users.ItemPeopleRequestBuilderGetQueryParameters{
+				Search: &name,
+			},
+		}
+		people, err := client.Me().People().Get(cmd.Context(), config)
+		if err != nil {
+			logrus.Errorf("Failed to get people from MS Graph: %v", err)
+			continue
+		}
+		contacts := people.GetValue()
+		for _, contact := range contacts {
+			if contact.GetDisplayName() != nil {
+				var emails []string
+				for _, email := range contact.GetScoredEmailAddresses() {
+					if email.GetAddress() != nil {
+						emails = append(emails, *email.GetAddress())
+					}
+				}
+				ret = append(ret, output{
+					Name:  *contact.GetDisplayName(),
+					Email: strings.Join(emails, ","),
+				})
+			}
+		}
+	}
+
 	result, err := client.Me().Contacts().Get(cmd.Context(), nil)
 	if err != nil {
 		return err
 	}
-	contacts := result.GetValue()
-	var ret []output
-	for _, contact := range contacts {
-		if contact.GetDisplayName() != nil {
-			for _, name := range strings.Split(os.Getenv("EMAIL_RECIPIENT_NAMES"), ",") {
-				if strings.Contains(strings.ToLower(*contact.GetDisplayName()), strings.ToLower(strings.TrimSpace(name))) {
-					ret = append(ret, output{
-						Name:  *contact.GetDisplayName(),
-						Email: *contact.GetEmailAddresses()[0].GetAddress(),
-					})
-					break
-				}
+	for _, contact := range result.GetValue() {
+		var displayName string
+		if contact.GetDisplayName() != nil && *contact.GetDisplayName() != "" {
+			displayName = *contact.GetDisplayName()
+		} else if contact.GetGivenName() != nil && contact.GetSurname() != nil {
+			displayName = fmt.Sprintf("%v %v", *contact.GetGivenName(), *contact.GetSurname())
+		}
+
+		for _, name := range strings.Split(os.Getenv("EMAIL_RECIPIENT_NAMES"), ",") {
+			if strings.Contains(strings.ToLower(displayName), strings.ToLower(strings.TrimSpace(name))) {
+				ret = append(ret, output{
+					Name:  displayName,
+					Email: *contact.GetEmailAddresses()[0].GetAddress(),
+				})
+				break
 			}
 		}
 	}
+
 	data, err := json.Marshal(ret)
 	if err != nil {
 		return err

@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"ethan/pkg/mstoken"
+
 	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -14,6 +16,15 @@ import (
 )
 
 type Schedule struct{}
+
+type eventOutput struct {
+	Subject   string
+	Emails    []string
+	StartTime string
+	EndTime   string
+	Organizer string
+	EventID   string
+}
 
 func (s *Schedule) Run(cmd *cobra.Command, _ []string) error {
 	cred := mstoken.NewStaticTokenCredential(os.Getenv("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN"))
@@ -73,13 +84,25 @@ func (s *Schedule) Run(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Event subject: %v\n", *event.GetSubject())
-	fmt.Printf("Event start time: %v\n", *event.GetStart().GetDateTime())
-	fmt.Printf("Event end time: %v\n", *event.GetEnd().GetDateTime())
-	for _, attendee := range event.GetAttendees() {
-		fmt.Printf("Event attende email address: %v\n", *attendee.GetEmailAddress().GetAddress())
-	}
-	fmt.Printf("Event organizer: %v\n", *event.GetOrganizer().GetEmailAddress().GetName())
 
+	var emails []string
+	for _, attendee := range event.GetAttendees() {
+		emails = append(emails, *attendee.GetEmailAddress().GetAddress())
+	}
+
+	o := eventOutput{
+		Subject:   *event.GetSubject(),
+		StartTime: *event.GetStart().GetDateTime(),
+		EndTime:   *event.GetEnd().GetDateTime(),
+		Organizer: *event.GetOrganizer().GetEmailAddress().GetName(),
+		EventID:   *event.GetId(),
+		Emails:    emails,
+	}
+
+	data, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }

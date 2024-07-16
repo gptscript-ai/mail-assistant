@@ -1,14 +1,13 @@
-import React, { useRef, useState } from 'react';
-import { Button, Tooltip } from '@nextui-org/react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { CallFrame } from '@gptscript-ai/gptscript';
 import { GoArrowDown, GoArrowUp } from 'react-icons/go';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
+import { Tooltip } from '@mui/material';
+import { Button } from '@mui/material';
 
-const StackTrace = ({ calls }: { calls: Record<string, CallFrame> | null }) => {
-    const [allOpen, setAllOpen] = useState(true);
+const StackTrace = ({ calls }: { calls: Record<string, CallFrame> }) => {
     const logsContainerRef = useRef<HTMLDivElement>(null);
-
-    if (!calls) return null;
+    const [allOpen, setAllOpen] = useState(true);
 
     const EmptyLogs = () => {
         return (
@@ -130,17 +129,10 @@ const StackTrace = ({ calls }: { calls: Record<string, CallFrame> | null }) => {
             className="h-full overflow-scroll p-4 rounded-2xl border-2 shadow-lg border-primary border-lg bg-black text-white"
             ref={logsContainerRef}
         >
-            <Tooltip
-                content={allOpen ? 'Collapse all' : 'Expand all'}
-                closeDelay={0}
-            >
+            <Tooltip title={allOpen ? 'Collapse all' : 'Expand all'}>
                 <Button
-                    onPress={() => {
-                        setAllOpen(!allOpen);
-                    }}
+                    onClick={() => setAllOpen(!allOpen)}
                     className="absolute right-8"
-                    isIconOnly
-                    radius="full"
                     color="primary"
                 >
                     {allOpen ? <GoArrowUp /> : <GoArrowDown />}

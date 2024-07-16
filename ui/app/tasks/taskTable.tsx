@@ -151,6 +151,10 @@ export function TasksTable({
         fetchTasks();
     };
 
+    const onClickTaskName = (id: string) => {
+        router.push(`/task/${id}`);
+    };
+
     const hasUnreadMessage = (task: Task): boolean => {
         if (task.Messages && task.Messages.length > 0) {
             return task.Messages.some((m) => !m.Read);
@@ -208,7 +212,16 @@ export function TasksTable({
                                             }}
                                         />
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell
+                                        sx={{
+                                            cursor: 'pointer', // Change cursor to pointer to indicate clickable area
+                                            '&:hover': {
+                                                backgroundColor:
+                                                    'rgba(0, 0, 0, 0.1)', // Add hover effect for better UX
+                                            },
+                                        }}
+                                        onClick={() => onClickTaskName(row.ID)}
+                                    >
                                         <Stack
                                             sx={{ alignItems: 'center' }}
                                             direction="row"
@@ -271,11 +284,7 @@ export function TasksTable({
                                                     color: 'red',
                                                     fontWeight: 'bold',
                                                 }}
-                                                onClick={() =>
-                                                    handleDeleteTaskClick(
-                                                        row.ID
-                                                    )
-                                                }
+                                                onClick={handleDeleteTaskClick}
                                             >
                                                 <ListItemIcon
                                                     style={{ color: 'red' }}

@@ -137,7 +137,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
         toolCall: string
     ): { tool: string; params: string } => {
         const [tool, params] = toolCall
-            .replace('<tool call> ', '')
+            .replace('<tool call>', '')
             .split(' -> ');
         return { tool, params };
     };

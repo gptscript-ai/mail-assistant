@@ -4,7 +4,7 @@ go 1.22.3
 
 toolchain go1.22.4
 
-replace github.com/gptscript-ai/go-gptscript => github.com/StrongMonkey/go-gptscript v0.0.0-20240715184546-28ee8f9f5d20
+replace github.com/gptscript-ai/go-gptscript => github.com/StrongMonkey/go-gptscript v0.0.0-20240715230752-1a87f58f8f2f
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1

@@ -15,7 +15,6 @@ import (
 
 type contactOutput struct {
 	Subject string `json:"subject"`
-	Body    string `json:"body"`
 }
 
 type ListSubjects struct{}
@@ -31,7 +30,7 @@ func (l *ListSubjects) Run(cmd *cobra.Command, args []string) error {
 	headers.Add("Prefer", "outlook.body-content-type=text")
 	requestParameters := &graphusers.ItemMessagesRequestBuilderGetQueryParameters{
 		Select: []string{"sender", "subject", "body"},
-		Top: &[]int32{100}[0],
+		Top:    &[]int32{100}[0],
 	}
 	configuration := &graphusers.ItemMessagesRequestBuilderGetRequestConfiguration{
 		QueryParameters: requestParameters,
@@ -46,7 +45,6 @@ func (l *ListSubjects) Run(cmd *cobra.Command, args []string) error {
 	var contacts []contactOutput
 	for _, m := range messages.GetValue() {
 		contacts = append(contacts, contactOutput{
-			Body:    *m.GetBody().GetContent(),
 			Subject: *m.GetSubject(),
 		})
 	}

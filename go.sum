@@ -12,8 +12,8 @@ github.com/BurntSushi/locker v0.0.0-20171006230638-a6e239ea1c69 h1:+tu3HOoMXB7RX
 github.com/BurntSushi/locker v0.0.0-20171006230638-a6e239ea1c69/go.mod h1:L1AbZdiDllfyYH5l5OkAaZtk7VkWe89bPJFmnDBNHxg=
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 h1:+vx7roKuyA63nhn5WAunQHLTznkw5W8b1Xc0dNjp83s=
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDeC1lPdgDeDbhX8XFpy1jqjK0IBG8W5K+xYqA0w=
-github.com/StrongMonkey/go-gptscript v0.0.0-20240715184546-28ee8f9f5d20 h1:iawiRC9bqxhk9Ec4TphcjOcWiPas+HLlEF5Herbz/X0=
-github.com/StrongMonkey/go-gptscript v0.0.0-20240715184546-28ee8f9f5d20/go.mod h1:Dh6vYRAiVcyC3ElZIGzTvNF1FxtYwA07BHfSiFKQY7s=
+github.com/StrongMonkey/go-gptscript v0.0.0-20240715230752-1a87f58f8f2f h1:Cr7ZajUxz/+8LztGQc/pmm/YvLO3I+x4wlRnsGZx6NY=
+github.com/StrongMonkey/go-gptscript v0.0.0-20240715230752-1a87f58f8f2f/go.mod h1:Dh6vYRAiVcyC3ElZIGzTvNF1FxtYwA07BHfSiFKQY7s=
 github.com/acorn-io/cmd v0.0.0-20240404013709-34f690bde37b h1:VzGEGrJn54UcsEvTqcpJj9USv7vc6TIxQGZVS0Ff304=
 github.com/acorn-io/cmd v0.0.0-20240404013709-34f690bde37b/go.mod h1:9jrYuzTJCv6QgGKl5gbhKqhG3kke31PmUE2KruBHzpg=
 github.com/acorn-io/namegenerator v0.0.0-20220915160418-9e3d5a0ffe78 h1:5zs9L/CXNkuTdJSbhFWczAorbmx67nqlqswx5CQi7XI=

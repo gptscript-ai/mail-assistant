@@ -14,6 +14,7 @@ func New() *cobra.Command {
 		new(Schedule),
 		new(CheckSchedule),
 		new(ListSubjects),
+		new(UpdateEvent),
 	)
 }
 

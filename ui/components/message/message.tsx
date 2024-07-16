@@ -3,6 +3,9 @@ import remarkGfm from 'remark-gfm';
 import rehypeExternalLinks from 'rehype-external-links';
 import { Avatar, Tooltip } from '@nextui-org/react';
 import { ChatMessage, MessageType } from '@/types/message';
+import Calls from '@/components/message/calls';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 
 const abbreviate = (name: string) => {
     const words = name.split(/(?=[A-Z])|[\s_-]/);
@@ -20,33 +23,17 @@ const M = ({
     switch (message.type) {
         case MessageType.User:
             return (
-                <div className="flex flex-col items-end mb-10">
+                <Box className="flex flex-col items-end mb-10">
                     <p className="whitespace-pre-wrap rounded-2xl bg-blue-500 text-white py-2 px-4 max-w-full">
                         {message.message}
                     </p>
-                </div>
+                </Box>
             );
         case MessageType.Bot:
             return (
-                <div className="flex flex-col items-start mb-10">
-                    <div className="flex gap-2 w-full">
-                        {!noAvatar && (
-                            <Tooltip
-                                content={`Sent from ${message.name || 'System'}`}
-                                placement="bottom"
-                                closeDelay={0.5}
-                            >
-                                <Avatar
-                                    showFallback
-                                    name={abbreviate(message.name || 'System')}
-                                    className="w-[40px] cursor-default"
-                                    classNames={{
-                                        base: `bg-white p-6 text-sm border dark:border-none dark:bg-zinc-900 ${message.error && 'border-danger dark:border-danger'}`,
-                                    }}
-                                />
-                            </Tooltip>
-                        )}
-                        <div
+                <Box className="flex flex-col items-start mb-10">
+                    <Stack direction="column" className="flex gap-2 w-full">
+                        <Box
                             className={`w-[93%] rounded-2xl text-black dark:text-white pt-1 px-4 border dark:border-none dark:bg-zinc-900 ${message.error ? 'border-danger dark:border-danger' : ''}`}
                         >
                             {message.message && (
@@ -64,9 +51,14 @@ const M = ({
                                 </Markdown>
                             )}
                             {message.component}
-                        </div>
-                    </div>
-                </div>
+                        </Box>
+                        {message.calls && (
+                            <Box className="w-[94%] flex justify-end mt-2">
+                                <Calls calls={message.calls} />
+                            </Box>
+                        )}
+                    </Stack>
+                </Box>
             );
         case MessageType.Alert:
             return (

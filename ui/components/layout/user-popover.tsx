@@ -9,9 +9,7 @@ import MenuList from '@mui/material/MenuList';
 import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
 import { SignOut as SignOutIcon } from '@phosphor-icons/react/dist/ssr/SignOut';
-import { getUser } from '@/utils/getUser';
 import { User } from '@/types/user';
-import { useEffect } from 'react';
 
 export interface UserPopoverProps {
     anchorEl: Element | null;
@@ -30,7 +28,7 @@ export function UserPopover({
 
     const handleSignOut = React.useCallback(async (): Promise<void> => {
         document.cookie = `jwt-token=; Max-Age=0; path=/; domain=${window.location.hostname}; expires=${new Date(0).toUTCString()};`;
-        router.push('/signin');
+        router.push('/signout');
     }, [router]);
 
     return (

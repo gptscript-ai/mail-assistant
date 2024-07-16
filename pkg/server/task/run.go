@@ -74,6 +74,17 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	// Close websocket after 15 minutes to avoid using a stale token
+	ctxWithtimeout, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
+	go func() {
+		<-ctxWithtimeout.Done()
+		logrus.Info("Connection timeout: closing the WebSocket connection")
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Session timed out"))
+		conn.Close()
+	}()
+
 	taskIDString := uuid.UUID(taskID.Bytes).String()
 	connection.SetConn(taskIDString, conn)
 	defer connection.RemoveConn(taskIDString)

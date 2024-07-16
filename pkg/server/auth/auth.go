@@ -33,7 +33,7 @@ var (
 		ClientID:     os.Getenv("MICROSOFT_CLIENT_ID"),
 		ClientSecret: os.Getenv("MICROSOFT_CLIENT_SECRET"),
 		RedirectURL:  fmt.Sprintf("%v/api/auth/callback", getPublicURL()),
-		Scopes:       []string{"User.Read", "Mail.ReadWrite", "Mail.Send", "Contacts.Read", "Calendars.ReadWrite", "offline_access"},
+		Scopes:       []string{"User.Read", "Mail.ReadWrite", "Mail.Send", "Contacts.Read", "Calendars.ReadWrite", "People.Read", "offline_access"},
 		Endpoint:     microsoft.AzureADEndpoint(os.Getenv("MICROSOFT_TENANT_ID")),
 	}
 	jwtKey = []byte(os.Getenv("MICROSOFT_JWT_KEY"))
@@ -152,8 +152,6 @@ func (h *Handler) HandleMicrosoftCallback(w http.ResponseWriter, r *http.Request
 		Name:     JwtTokenName,
 		Value:    jwtToken,
 		Expires:  time.Now().Add(time.Hour * 24),
-		HttpOnly: true,
-		Secure:   false,
 		SameSite: http.SameSiteDefaultMode,
 		Path:     "/",
 	}

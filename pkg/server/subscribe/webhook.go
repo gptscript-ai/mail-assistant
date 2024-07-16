@@ -124,7 +124,7 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 			if strings.ToLower(output) == "yes" {
 				nameRun, err := gptClient.Evaluate(context.Background(), gptscript.Options{}, gptscript.ToolDef{
-					Instructions: fmt.Sprintf(`Given email body: %v, summarize the email content and Assign a name for this email. Give me a json object that has name and summary as keys. use lower case.`, *message.GetBody().GetContent()),
+					Instructions: fmt.Sprintf(`Given email body: %v, summarize the email content and Assign a name for this email. Give me a json object that has name and summary as keys. use lower case. Just return string represetation of json object that can be serialized.'`, *message.GetBody().GetContent()),
 				})
 				if err != nil {
 					logrus.Error(fmt.Errorf("failed to run gptscript to check email content: %w", err))
@@ -143,7 +143,7 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 					Name    string `json:"name"`
 				}
 				if err := json.Unmarshal([]byte(out), &output); err != nil {
-					logrus.Error(fmt.Errorf("failed to unmarshal output: %w", err))
+					logrus.Error(fmt.Errorf("failed to unmarshal output: %v, %w", out, err))
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
