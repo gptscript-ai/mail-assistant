@@ -1,32 +1,49 @@
 import { useState } from 'react';
 import StackTrace from './stackTrace';
 import type { CallFrame } from '@gptscript-ai/gptscript';
-import { IoCloseSharp } from 'react-icons/io5';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import { Modal } from '@mui/material';
 import Box from '@mui/material/Box';
 import { Note } from '@phosphor-icons/react/dist/ssr/Note';
-import { Wrench } from '@phosphor-icons/react/dist/ssr/Wrench';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
 
 const Calls = ({ calls }: { calls: Record<string, CallFrame> }) => {
     const [showModal, setShowModal] = useState(false);
     const [fullscreen, setFullscreen] = useState(false);
-    console.log(calls);
+
+    const getFunctionCalls = (calls: Record<string, CallFrame>) => {
+        return Object.keys(calls)
+            .filter((k) => k.startsWith('call_'))
+            .map((k) => calls[k].toolName);
+    };
 
     const onClose = () => {
         setShowModal(false);
     };
 
     return (
-        <Stack direction="row" spacing={1}>
-            {/*{calls && Object.keys(calls).length > 0 && (*/}
-            {/*    <Tooltip title="Tool Call successfully">*/}
-            {/*        <Wrench size={20} />*/}
-            {/*    </Tooltip>*/}
-            {/*)}*/}
+        <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{
+                display: 'flex',
+            }}
+        >
+            {getFunctionCalls(calls)?.length > 0 && (
+                <Tooltip title={`Tool called successfully`}>
+                    <CheckCircleIcon
+                        style={{
+                            color: 'green',
+                            fontSize: 20,
+                        }}
+                    />
+                </Tooltip>
+            )}
             <Tooltip
                 title="View stack trace"
                 sx={{
@@ -51,7 +68,7 @@ const Calls = ({ calls }: { calls: Record<string, CallFrame> }) => {
                             color="primary"
                             onClick={() => setShowModal(false)}
                         >
-                            <IoCloseSharp />
+                            <CloseIcon />
                         </Button>
                     </Box>
                     {calls && Object.keys(calls).length > 0 && (

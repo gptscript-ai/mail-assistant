@@ -25,9 +25,14 @@ func (c *CheckSchedule) Run(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	me, err := client.Me().Get(cmd.Context(), nil)
+	if err != nil {
+		return err
+	}
+
 	headers := abstractions.NewRequestHeaders()
 	headers.Add("Prefer", "outlook.body-content-type=text,outlook.timezone=\"Pacific Standard Time\"")
-	emailRecipients := strings.Split(os.Getenv("EMAIL_RECIPIENT"), ",")
+	emailRecipients := append(strings.Split(os.Getenv("EMAIL_RECIPIENT"), ","), *me.GetMail())
 	conversationID := os.Getenv("CONVERSATION_ID")
 
 	ret := strings.Builder{}

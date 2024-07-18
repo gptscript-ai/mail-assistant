@@ -23,6 +23,30 @@ export default function Page(): React.JSX.Element {
     const [contexts, setContexts] = useState<Context[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredContexts, setFilteredContexts] = useState(contexts);
+
+    useEffect(() => {
+        if (searchQuery === '') {
+            setFilteredContexts(contexts);
+        } else {
+            setFilteredContexts(
+                contexts?.filter(
+                    (contexts) =>
+                        contexts.Name.toLowerCase().includes(
+                            searchQuery.toLowerCase()
+                        ) ||
+                        contexts.Description.toLowerCase().includes(
+                            searchQuery.toLowerCase()
+                        )
+                )
+            );
+        }
+    }, [searchQuery, contexts]);
+
+    const handleSearchChange = (event: any) => {
+        setSearchQuery(event.target.value);
+    };
 
     const handleAddContextClick = () => {
         setIsModalVisible(true);
@@ -105,8 +129,6 @@ export default function Page(): React.JSX.Element {
         setInterval(() => fetchContexts(), 10000);
     }, []);
 
-    const renderedContexts = applyPagination(contexts, page, rowsPerPage);
-
     return (
         <Stack spacing={3}>
             <Stack direction="row" spacing={3}>
@@ -146,9 +168,10 @@ export default function Page(): React.JSX.Element {
             </Stack>
             <Card sx={{ p: 2 }}>
                 <OutlinedInput
-                    defaultValue=""
+                    value={searchQuery}
+                    onChange={handleSearchChange}
                     fullWidth
-                    placeholder="Search contexts"
+                    placeholder="Search rules"
                     startAdornment={
                         <InputAdornment position="start">
                             <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
@@ -157,9 +180,9 @@ export default function Page(): React.JSX.Element {
                     sx={{ maxWidth: '500px' }}
                 />
             </Card>
-            {renderedContexts && (
+            {filteredContexts && (
                 <ContextsTable
-                    rows={renderedContexts}
+                    rows={filteredContexts}
                     rowsPerPage={rowsPerPage}
                     selectedIds={selected}
                     setSelectedIds={setSelected}

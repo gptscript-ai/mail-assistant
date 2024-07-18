@@ -14,11 +14,24 @@ export interface Selection<T = string> {
 export function useSelection<T = string>(
     keys: T[] = [],
     selected: Set<T>,
-    setSelected: any
+    setSelected: any,
+    currentPage: number,
+    pagePerRows: number
 ): Selection<T> {
+    const getCurrentPageKeys = React.useCallback(() => {
+        const start = currentPage * pagePerRows;
+        const end = Math.min(start + pagePerRows, keys.length);
+        return keys.slice(start, end);
+    }, [keys, currentPage, pagePerRows]);
+
     const handleDeselectAll = React.useCallback(() => {
-        setSelected(new Set());
-    }, []);
+        const currentKeys = getCurrentPageKeys();
+        setSelected((prev: Set<T>) => {
+            const copy = new Set(prev);
+            currentKeys.forEach((key) => copy.delete(key));
+            return copy;
+        });
+    }, [getCurrentPageKeys]);
 
     const handleDeselectOne = React.useCallback((key: T) => {
         setSelected((prev: Iterable<unknown> | null | undefined) => {
@@ -29,8 +42,13 @@ export function useSelection<T = string>(
     }, []);
 
     const handleSelectAll = React.useCallback(() => {
-        setSelected(new Set(keys));
-    }, [keys]);
+        const currentKeys = getCurrentPageKeys();
+        setSelected((prev: Set<T>) => {
+            const copy = new Set(prev);
+            currentKeys.forEach((key) => copy.add(key));
+            return copy;
+        });
+    }, [getCurrentPageKeys]);
 
     const handleSelectOne = React.useCallback((key: T) => {
         setSelected((prev: Set<T>) => {
@@ -41,7 +59,7 @@ export function useSelection<T = string>(
     }, []);
 
     const selectedAny = selected.size > 0;
-    const selectedAll = selected.size === keys.length;
+    const selectedAll = getCurrentPageKeys().every((key) => selected.has(key));
 
     return {
         deselectAll: handleDeselectAll,

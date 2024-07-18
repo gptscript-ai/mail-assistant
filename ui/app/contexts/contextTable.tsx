@@ -24,6 +24,7 @@ import { ListItemText, Menu } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { useRouter } from 'next/navigation';
+import { format } from 'timeago.js';
 
 interface CustomersTableProps {
     rows?: Context[];
@@ -53,13 +54,13 @@ export function ContextsTable({
     }, [rows]);
 
     const router = useRouter();
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(5);
     const { selectAll, deselectAll, selectOne, deselectOne, selected } =
-        useSelection(rowIds, selectedIds, setSelectedIds);
+        useSelection(rowIds, selectedIds, setSelectedIds, page, rowsPerPage);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
     const [editingContext, setEditingContext] = useState<Context>();
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(5);
     const [renderedContexts, setRenderedContexts] = useState<Context[]>([]);
 
     useEffect(() => {
@@ -155,6 +156,7 @@ export function ContextsTable({
                             <TableCell>Name</TableCell>
                             <TableCell>Description</TableCell>
                             <TableCell>Created</TableCell>
+                            <TableCell></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -192,9 +194,7 @@ export function ContextsTable({
                                     </TableCell>
                                     <TableCell>{row.Description}</TableCell>
                                     <TableCell>
-                                        {dayjs(row.CreatedAt).format(
-                                            'YYYY-MM-DD HH:mm'
-                                        )}
+                                        {format(row.CreatedAt, 'en_us')}
                                     </TableCell>
                                     <TableCell sx={{ width: '50px' }}>
                                         <IconButton

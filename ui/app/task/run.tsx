@@ -8,18 +8,7 @@ import { ChatMessage, MessageType } from '@/types/message';
 import { CallFrame } from '@gptscript-ai/gptscript';
 import { Note } from '@phosphor-icons/react/dist/ssr/Note';
 import { Task } from '@/types/task';
-
-const style = {
-    position: 'absolute' as 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 400,
-    bgcolor: 'background.paper',
-    border: '2px solid #000',
-    boxShadow: 24,
-    p: 4,
-};
+import Tooltip from '@mui/material/Tooltip';
 
 interface TaskFormModalProps {
     id: string;
@@ -51,14 +40,30 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     const messagesRef = useRef(messages);
     const initialized = useRef(false);
     const [generating, setGenerating] = useState(false);
-    const [running, setRunning] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const [userMessages, setUserMessages] = useState<string[]>([]);
+    const [messageIndex, setMessageIndex] = useState(-1);
 
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     };
+
+    const getMessageAtIndex = (index: number) => {
+        if (index >= 0 && index < userMessages.length) {
+            return userMessages[userMessages.length - 1 - index];
+        }
+        return '';
+    };
+
+    useEffect(() => {
+        setUserMessages(
+            messages
+                .filter((m) => m.type === MessageType.User)
+                .map((m) => m.message ?? '')
+        );
+    }, [messages]);
 
     useEffect(() => {
         task?.Messages?.filter((m) => !m.Read).forEach((m) => {
@@ -265,17 +270,19 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     }, [handleProgress, id, socket]);
 
     const sendMessage = () => {
+        const m = message;
         setMessages((prevMessages) => [
             ...prevMessages,
             {
-                message: message.trim(),
+                message: m.trim(),
                 type: MessageType.User,
             },
         ]);
         if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(message.trim());
+            socket.send(m.trim());
         }
         setMessage('');
+        setMessageIndex(-1);
     };
 
     useEffect(() => {
@@ -328,21 +335,15 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                     overflowY: 'auto',
                 }}
             >
-                <Stack spacing={1} sx={{ flex: '0 1 auto' }}>
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ flex: '0 1 auto', alignItems: 'flex-end' }}
+                >
                     <Typography variant="h3">{task?.Name}</Typography>
-                    <Stack direction="row">
+                    <Tooltip title={task?.Description}>
                         <Note size={24} />
-                        <Typography
-                            variant="h4"
-                            sx={{
-                                fontWeight: 'light',
-                                fontSize: '1rem',
-                                color: 'text.secondary',
-                            }}
-                        >
-                            {task?.Description}
-                        </Typography>
-                    </Stack>
+                    </Tooltip>
                 </Stack>
                 <Stack
                     sx={{
@@ -353,31 +354,32 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                         overflowY: 'auto',
                     }}
                 >
-                    <Card
+                    <Box
                         sx={{
                             flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             overflowY: 'auto',
                             height: '100%',
+                            width: '95%',
                         }}
                     >
-                        <Box
+                        <Card
                             sx={{
                                 flex: 1,
-                                padding: 2,
+                                m: 2,
+                                p: 2,
                                 overflowY: 'auto',
                             }}
                         >
-                            <Messages messages={messages} noAvatar={true} />
+                            <Messages messages={messages} />
                             <div ref={messagesEndRef} />
-                        </Box>
+                        </Card>
                         <Box
                             sx={{
                                 padding: 2,
                                 display: 'flex',
-                                alignItems: 'center',
-                                borderTop: '1px solid #e0e0e0',
+                                alignItems: 'end',
                             }}
                         >
                             <TextField
@@ -386,14 +388,45 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                                 multiline
                                 rows={1}
                                 value={message}
-                                onChange={(e) => setMessage(e.target.value)}
+                                onChange={(e) => {
+                                    setMessage(e.target.value);
+                                }}
                                 placeholder="Type your message"
-                                onKeyPress={(e: any) => {
-                                    if (e.shiftKey && e.charCode === 13) {
+                                onKeyDown={(e) => {
+                                    if (e.shiftKey && e.key === 'Enter') {
                                         return true;
                                     }
-                                    if (e.charCode === 13) {
+                                    if (e.key === 'Enter') {
                                         sendMessage();
+                                    }
+                                    if (e.key === 'ArrowUp') {
+                                        console.log(messageIndex);
+                                        setMessageIndex((prevIndex) => {
+                                            const newIndex = Math.min(
+                                                prevIndex + 1,
+                                                userMessages.length - 1
+                                            );
+                                            setMessage(
+                                                getMessageAtIndex(newIndex)
+                                            );
+                                            return newIndex;
+                                        });
+                                    }
+                                    if (e.key === 'ArrowDown') {
+                                        setMessageIndex((prevIndex) => {
+                                            const newIndex = Math.max(
+                                                prevIndex - 1,
+                                                -1
+                                            );
+                                            setMessage(
+                                                newIndex === -1
+                                                    ? ''
+                                                    : getMessageAtIndex(
+                                                          newIndex
+                                                      )
+                                            );
+                                            return newIndex;
+                                        });
                                     }
                                 }}
                             />
@@ -407,7 +440,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                                 Send
                             </Button>
                         </Box>
-                    </Card>
+                    </Box>
                 </Stack>
             </Stack>
         </Stack>

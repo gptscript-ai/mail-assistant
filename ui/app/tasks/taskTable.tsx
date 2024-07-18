@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import ContextFormDialog from '@/app/tasks/contextDialog';
 import Badge from '@mui/material/Badge';
 import { Task } from '@/types/task';
+import { format } from 'timeago.js';
 
 interface CustomersTableProps {
     rows?: Task[];
@@ -57,14 +58,15 @@ export function TasksTable({
     }, [rows]);
 
     const router = useRouter();
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(5);
     const { selectAll, deselectAll, selectOne, deselectOne, selected } =
-        useSelection(rowIds, selectedIds, setSelectedIds);
+        useSelection(rowIds, selectedIds, setSelectedIds, page, rowsPerPage);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
     const [editingTask, setEditingTask] = useState<Task>();
     const [showContextDialog, setShowContextDialog] = useState(false);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(5);
+
     const [renderedTasks, setRenderedTasks] = useState<Task[]>([]);
 
     useEffect(() => {
@@ -188,6 +190,7 @@ export function TasksTable({
                             <TableCell>Name</TableCell>
                             <TableCell>Description</TableCell>
                             <TableCell>Created</TableCell>
+                            <TableCell></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -233,10 +236,8 @@ export function TasksTable({
                                         </Stack>
                                     </TableCell>
                                     <TableCell>{row.Description}</TableCell>
-                                    <TableCell>
-                                        {dayjs(row.CreatedAt).format(
-                                            'YYYY-MM-DD HH:mm'
-                                        )}
+                                    <TableCell sx={{ width: '150px' }}>
+                                        {format(row.CreatedAt, 'en_us')}
                                     </TableCell>
 
                                     <TableCell sx={{ width: '50px' }}>

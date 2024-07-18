@@ -74,17 +74,6 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Close websocket after 15 minutes to avoid using a stale token
-	ctxWithtimeout, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
-	defer cancel()
-
-	go func() {
-		<-ctxWithtimeout.Done()
-		logrus.Info("Connection timeout: closing the WebSocket connection")
-		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Session timed out"))
-		conn.Close()
-	}()
-
 	taskIDString := uuid.UUID(taskID.Bytes).String()
 	connection.SetConn(taskIDString, conn)
 	defer connection.RemoveConn(taskIDString)
@@ -118,6 +107,7 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toolDefs[0].Instructions += "\n" + fmt.Sprintf("Current user: %v\n", user.Name)
+	toolDefs[0].Instructions += "\n" + fmt.Sprintf("Current email: %v\n", user.Email)
 	toolDefs[0].Instructions += "\n" + fmt.Sprintf("Current time: %v\n", time.Now())
 
 	if task.MessageBody != nil {
@@ -136,6 +126,11 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 	go ping(conn, run, writeLock, cancel)
 
 	for {
+		// Since the token is only valid for an hour, check whether token
+		if user.ExpireAt.Valid && user.ExpireAt.Time.Before(time.Now()) {
+			logrus.Warnf("User %v's credential token expired, restarting connection", userID)
+			return
+		}
 		select {
 		case <-ctx.Done():
 			logrus.Infof("Context cancel, returning")

@@ -62,7 +62,7 @@ func RefreshToken(ctx context.Context, queries *db.Queries) {
 						logrus.Error(fmt.Errorf("failed to update user after token refresh: %w", err))
 						continue
 					}
-					logrus.Infof("User %v updated", uuid.UUID(user.ID.Bytes).String())
+					logrus.Infof("User %v updated, token refreshed at %v", uuid.UUID(user.ID.Bytes).String(), time.Now())
 				}
 			}
 		}

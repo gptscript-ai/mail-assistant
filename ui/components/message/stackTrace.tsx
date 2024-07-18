@@ -126,7 +126,7 @@ const StackTrace = ({ calls }: { calls: Record<string, CallFrame> }) => {
 
     return (
         <div
-            className="h-full overflow-scroll p-4 rounded-2xl border-2 shadow-lg border-primary border-lg bg-black text-white"
+            className="h-full overflow-scroll p-4 rounded-2xl border-2 shadow-lg border-primary border-lg bg-white text-black"
             ref={logsContainerRef}
         >
             <Tooltip title={allOpen ? 'Collapse all' : 'Expand all'}>

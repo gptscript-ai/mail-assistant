@@ -22,6 +22,30 @@ export default function Page(): React.JSX.Element {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
     const [contexts, setContexts] = React.useState<Context[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredTasks, setFilteredTasks] = useState(tasks);
+
+    useEffect(() => {
+        if (searchQuery === '') {
+            setFilteredTasks(tasks);
+        } else {
+            setFilteredTasks(
+                tasks?.filter(
+                    (task) =>
+                        task.Name.toLowerCase().includes(
+                            searchQuery.toLowerCase()
+                        ) ||
+                        task.Description.toLowerCase().includes(
+                            searchQuery.toLowerCase()
+                        )
+                )
+            );
+        }
+    }, [searchQuery, tasks]);
+
+    const handleSearchChange = (event: any) => {
+        setSearchQuery(event.target.value);
+    };
 
     const fetchContexts = async () => {
         try {
@@ -186,7 +210,8 @@ export default function Page(): React.JSX.Element {
             </Stack>
             <Card sx={{ p: 2 }}>
                 <OutlinedInput
-                    defaultValue=""
+                    value={searchQuery}
+                    onChange={handleSearchChange}
                     fullWidth
                     placeholder="Search tasks"
                     startAdornment={
@@ -197,9 +222,9 @@ export default function Page(): React.JSX.Element {
                     sx={{ maxWidth: '500px' }}
                 />
             </Card>
-            {tasks && (
+            {filteredTasks && (
                 <TasksTable
-                    rows={tasks}
+                    rows={filteredTasks}
                     selectedIds={selected}
                     setSelectedIds={setSelected}
                     fetchTasks={fetchTasks}

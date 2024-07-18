@@ -30,7 +30,7 @@ const Page = () => {
                 </Typography>
                 <Button
                     component={RouterLink}
-                    href="/"
+                    href="/signin"
                     startIcon={
                         <ArrowLeftIcon fontSize="var(--icon-fontSize-md)" />
                     }
