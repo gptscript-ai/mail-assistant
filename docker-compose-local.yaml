@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:12-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    restart: always
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: ./Dockerfile.ui
+    ports:
+      - "3000"
+    restart: always
+
+  server:
+    build:
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET}
+      MICROSOFT_JWT_KEY: ${MICROSOFT_JWT_KEY}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
+      PG_DBNAME: ${DB_NAME}
+      PG_HOST: ${DB_HOST}
+      PG_USER: ${DB_USER}
+      PG_PASSWORD: ${DB_PASSWORD}
+      PUBLIC_URL: ${PUBLIC_URL}
+      UI_SERVER: ${UI_SERVER}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEVELOPMENT: "true"
+    env_file:
+      - .env
+
+volumes:
+  db_data:
