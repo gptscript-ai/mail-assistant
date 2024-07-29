@@ -7,7 +7,4 @@ import (
 var (
 	//go:embed copilot.gpt
 	DefaultToolDef string
-
-	//go:embed context.gpt
-	DefaultContext string
 )
