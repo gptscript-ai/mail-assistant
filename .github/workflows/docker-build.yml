@@ -50,7 +50,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./ui
-          file: ./ui/Dockerfile
+          file: ./ui/Dockerfile.ui
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
