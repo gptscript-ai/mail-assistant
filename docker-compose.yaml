@@ -43,6 +43,7 @@ services:
       UI_SERVER: ${UI_SERVER}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       DEVELOPMENT: "true"
+      DEFAULT_MODEL: ${DEFAULT_MODEL}
     env_file:
       - .env
 

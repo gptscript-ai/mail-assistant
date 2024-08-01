@@ -52,7 +52,6 @@ DB_PASSWORD=admin123
 DB_HOST=db
 
 MICROSOFT_CLIENT_ID=${CLIENT_ID}
-OPENAI_API_KEY=${OPENAI_API_KEY}
 MICROSOFT_CLIENT_SECRET=${CLIENT_SECRET}
 MICROSOFT_JWT_KEY=${JWT_SECRET_KEY}
 MICROSOFT_TENANT_ID=${TENANT_ID}
@@ -61,14 +60,30 @@ DEVELOPMENT=true
 
 PUBLIC_URL=${PUBLIC_URL}
 UI_SERVER=http://ui:3000
+
+OPENAI_API_KEY=${OPENAI_API_KEY}
+OPENAI_BASE_URL=https://api.openai.com/v1/
+DEFAULT_MODEL=gpt-4o
 ```
 
 Then run docker-compose:
 
 ```bash
-docker compose -f docker-compose-local.yaml up
+docker compose -f docker-compose.yaml up
 ```
 
 Go to `http://localhost:8080` and you can start logging in and using the app.
+
+### Using a Different Model
+
+The default model is `gpt-4o`. To use a different OpenAI model, update the `DEFAULT_MODEL` in the `.env` file.
+
+To connect to an OpenAI-compatible local model server, such as llama.cpp, ollama, or Rubra's tool.cpp, update the `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `DEFAULT_MODEL` accordingly. For example:
+
+```
+OPENAI_API_KEY=sk-123
+OPENAI_BASE_URL=http://host.docker.internal:1234/v1
+DEFAULT_MODEL=rubra-meta-llama-3-8b-instruct.Q8_0.gguf
+```
 
 ---

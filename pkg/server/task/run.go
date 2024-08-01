@@ -53,6 +53,7 @@ func (h *Handler) RunTask(w http.ResponseWriter, r *http.Request) {
 
 	client, err := gptscript.NewGPTScript(gptscript.GlobalOptions{
 		OpenAIAPIKey: os.Getenv("OPENAI_API_KEY"),
+		DefaultModel: os.Getenv("DEFAULT_MODEL"),
 		Env:          append(os.Environ(), fmt.Sprintf("GPTSCRIPT_GRAPH_MICROSOFT_COM_BEARER_TOKEN=%v", user.Token)),
 		HashID:       uuid.UUID(user.ID.Bytes).String(),
 	})

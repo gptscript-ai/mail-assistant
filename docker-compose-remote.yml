@@ -39,6 +39,7 @@ services:
       PUBLIC_URL: ${PUBLIC_URL}
       UI_SERVER: ${UI_SERVER}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEFAULT_MODEL: ${DEFAULT_MODEL}
     env_file:
       - .env
 
