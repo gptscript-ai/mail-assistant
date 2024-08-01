@@ -10,16 +10,12 @@ jobs:
     runs-on: ${{ matrix.runs-on }}  # Add this line
     strategy:
       matrix:
-        platform: [linux/amd64, linux/arm64, darwin/amd64, darwin/arm64]
+        platform: [linux/amd64, linux/arm64]
         include:
           - platform: linux/amd64
             runs-on: ubuntu-latest
           - platform: linux/arm64
             runs-on: ubuntu-latest
-          - platform: darwin/amd64
-            runs-on: macos-latest
-          - platform: darwin/arm64
-            runs-on: macos-latest
 
     steps:
       - name: Checkout code
