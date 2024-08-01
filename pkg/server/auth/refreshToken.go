@@ -58,6 +58,7 @@ func RefreshToken(ctx context.Context, queries *db.Queries) {
 						SubscriptionID:       user.SubscriptionID,
 						SubscriptionExpireAt: user.SubscriptionExpireAt,
 						SubscriptionDisabled: user.SubscriptionDisabled,
+						CheckSpam:            user.CheckSpam,
 					}); err != nil {
 						logrus.Error(fmt.Errorf("failed to update user after token refresh: %w", err))
 						continue

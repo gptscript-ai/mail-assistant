@@ -79,6 +79,7 @@ func ensureSubscriptionsForUser(ctx context.Context, user db.User, queries *db.Q
 				SubscriptionID:       nil,
 				SubscriptionExpireAt: pgtype.Timestamptz{},
 				SubscriptionDisabled: user.SubscriptionDisabled,
+				CheckSpam:            user.CheckSpam,
 			}); err != nil {
 				return err
 			}
@@ -100,6 +101,7 @@ func ensureSubscriptionsForUser(ctx context.Context, user db.User, queries *db.Q
 			SubscriptionID:       &subscriptionID,
 			SubscriptionExpireAt: t,
 			SubscriptionDisabled: user.SubscriptionDisabled,
+			CheckSpam:            user.CheckSpam,
 		}); err != nil {
 			return err
 		}

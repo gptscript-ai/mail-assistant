@@ -8,6 +8,7 @@ import (
 
 	"ethan/pkg/db"
 	"ethan/pkg/mstoken"
+	"ethan/pkg/server/subscribe"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -101,11 +102,15 @@ func (h *Handler) MoveSpam(w http.ResponseWriter, r *http.Request) {
 	requestBody := graphusers.NewItemMailfoldersItemMessagesItemMovePostRequestBody()
 	inboxFolderID := "inbox"
 	requestBody.SetDestinationId(&inboxFolderID)
-	if _, err := client.Me().Messages().ByMessageId(*spamEmail.MessageID).Move().Post(r.Context(), requestBody, nil); err != nil {
+	newMessage, err := client.Me().Messages().ByMessageId(*spamEmail.MessageID).Move().Post(r.Context(), requestBody, nil)
+	if err != nil {
 		logrus.Errorf("Failed to move message to back to inbox, error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// After we move the message back to Inbox, we need to skip checking this email because it has been falsely detected as spam
+	// For now we temporarily store the message ID into memory map. This is not going to work in HA but don't worry about it now.
+	subscribe.SkipEmails[*newMessage.GetId()] = struct{}{}
 
 	logrus.Infof("Move spam email %s to %s", *spamEmail.MessageID, inboxFolderID)
 
