@@ -41,12 +41,15 @@ export default function Notification() {
             if (messages) {
                 messages = await Promise.all(
                     messages.map(async (m) => {
-                        const taskId = m.TaskID;
-                        const taskResponse = await fetch(
-                            `/api/tasks/${taskId}`
-                        );
-                        const task: Task = await taskResponse.json();
-                        m.TaskName = task.Name;
+                        if (m.TaskID !== null) {
+                            const taskId = m.TaskID;
+                            const taskResponse = await fetch(
+                                `/api/tasks/${taskId}`
+                            );
+                            const task: Task = await taskResponse.json();
+                            m.TaskName = task.Name;
+                        }
+
                         return m;
                     })
                 );

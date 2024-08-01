@@ -50,10 +50,14 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
 
         const path = window.location.pathname;
 
-        if (path === `/task/${m.TaskID}`) {
-            window.location.reload();
+        if (m.TaskID) {
+            if (path === `/task/${m.TaskID}`) {
+                window.location.reload();
+            } else {
+                router.push(`/task/${m.TaskID}`);
+            }
         } else {
-            router.push(`/task/${m.TaskID}`);
+            router.push('/spam');
         }
     };
 
@@ -123,15 +127,19 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                                     </Typography>
                                 }
                                 secondary={
-                                    <Stack direction="row">
-                                        <Wrench size={20} />
-                                        <Typography
-                                            sx={{ ml: '4px' }}
-                                            variant="h6"
-                                        >
-                                            {message.TaskName}
-                                        </Typography>
-                                    </Stack>
+                                    message.TaskName ? (
+                                        <Stack direction="row">
+                                            <Wrench size={20} />
+                                            <Typography
+                                                sx={{ ml: '4px' }}
+                                                variant="h6"
+                                            >
+                                                {message.TaskName}
+                                            </Typography>
+                                        </Stack>
+                                    ) : (
+                                        ''
+                                    )
                                 }
                             />
                         </ListItem>

@@ -27,6 +27,15 @@ type Message struct {
 	Read      *bool
 }
 
+type SpamEmail struct {
+	ID        pgtype.UUID
+	MessageID *string
+	Subject   *string
+	EmailBody *string
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
 type Task struct {
 	ID             pgtype.UUID
 	Name           string
@@ -52,4 +61,5 @@ type User struct {
 	SubscriptionExpireAt pgtype.Timestamptz
 	SubscriptionDisabled *bool
 	ExpireAt             pgtype.Timestamptz
+	CheckSpam            *bool
 }

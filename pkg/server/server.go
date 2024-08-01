@@ -14,6 +14,7 @@ import (
 	"ethan/pkg/server/auth"
 	"ethan/pkg/server/contexts"
 	"ethan/pkg/server/message"
+	"ethan/pkg/server/spam"
 	"ethan/pkg/server/subscribe"
 	"ethan/pkg/server/task"
 
@@ -62,7 +63,7 @@ func main() {
 	contextHandler := contexts.NewHandler(queries)
 	subscribeHandler := subscribe.NewHandler(queries)
 	messageHandler := message.NewHandler(queries)
-
+	spamHandler := spam.NewHandler(queries)
 	target, err := url.Parse(os.Getenv("UI_SERVER"))
 	if err != nil {
 		log.Fatal(err)
@@ -102,6 +103,12 @@ func main() {
 	// Messages
 	apiRouter.HandleFunc("/messages", auth.Middleware(messageHandler.ListMessages)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/messages/{id}", auth.Middleware(messageHandler.UpdateMessage)).Methods(http.MethodPost)
+
+	// Spam
+	apiRouter.HandleFunc("/spams", auth.Middleware(spamHandler.ListSpams)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/spams/{id}", auth.Middleware(spamHandler.GetSpam)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/spams/{id}/moveback", auth.Middleware(spamHandler.MoveSpam)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/spams/{id}", auth.Middleware(spamHandler.DeleteSpam)).Methods(http.MethodDelete)
 
 	r.PathPrefix("/").Handler(proxy)
 

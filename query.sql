@@ -29,7 +29,8 @@ set token = $2,
     expire_at = $4,
     subscription_id = $5,
     subscription_expire_at = $6,
-    subscription_disabled = $7
+    subscription_disabled = $7,
+    check_spam = $8
 WHERE id = $1;
 
 -- name: DeleteUser :exec
@@ -133,4 +134,21 @@ WHERE id = $1;
 -- name: GetContext :one
 SELECT * FROM contexts
 WHERE id = $1 LIMIT 1;
+
+-- name: CreateSpamEmailRecord :exec
+INSERT INTO spam_emails (
+    subject, email_body, user_id, message_id
+) VALUES (
+    $1, $2, $3, $4
+);
+
+-- name: ListSpamEmails :many
+SELECT * FROM spam_emails WHERE user_id = $1;
+
+-- name: GetSpamEmail :one
+SELECT * FROM spam_emails WHERE id = $1;
+
+-- name: DeleteSpamEmail :exec
+DELETE FROM spam_emails WHERE id = $1;
+
 

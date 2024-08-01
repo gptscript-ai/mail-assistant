@@ -4,6 +4,7 @@ export interface User {
     avatar?: string;
     email?: string;
     subscriptionDisabled?: boolean;
+    checkSpam?: boolean;
 
     [key: string]: unknown;
 }

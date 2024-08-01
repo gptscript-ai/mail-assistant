@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"ethan/pkg/db"
+	"ethan/pkg/mstoken"
 	"github.com/jackc/pgx/v5/pgtype"
+	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
+	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/sirupsen/logrus"
 )
 
@@ -49,6 +53,31 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		logrus.Error(fmt.Errorf("failed to update user: %w", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	// Create a cold email folder to store all process cold emails
+	if user.CheckSpam != nil && *user.CheckSpam {
+		cred := mstoken.NewStaticTokenCredential(user.Token)
+		client, err := msgraphsdk.NewGraphServiceClientWithCredentials(cred, []string{})
+		if err != nil {
+			logrus.Error(fmt.Errorf("failed to create graph client: %w", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		requestBody := graphmodels.NewMailFolder()
+		displayName := "Cold Emails"
+		requestBody.SetDisplayName(&displayName)
+		isHidden := false
+		requestBody.SetIsHidden(&isHidden)
+
+		if _, err := client.Me().MailFolders().Post(r.Context(), requestBody, nil); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				logrus.Error(fmt.Errorf("failed to post mail folder: %w", err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

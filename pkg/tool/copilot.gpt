@@ -33,7 +33,9 @@ name: send-email
 description: Send email to contacts by asking their availabilities
 args: email-subject: the subject of the email
 args: email-content: the content of the email
-args: email-recipient: email recipients, separated by comma.
+args: email-recipient-to: email recipients to send to, separated by comma.
+args: email-recipient-cc: email recipients to send as CC, separated by comma.
+args: email-recipient-bcc: email recipients to send as BCC, separated by comma.
 
 #!gem-copilot send-email
 

@@ -22,5 +22,6 @@ export async function getUser(): Promise<User> {
         avatar: `https://ui-avatars.com/api/?name=${firstName}+${lastName}`,
         email: data.Email,
         subscriptionDisabled: data.SubscriptionDisabled,
+        checkSpam: data.CheckSpam,
     };
 }

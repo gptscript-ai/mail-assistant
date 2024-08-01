@@ -23,6 +23,12 @@ export const bottomNavItems = [
         href: '/account',
     },
     {
+        key: 'spam',
+        title: 'Cold Email',
+        icon: 'spam',
+        href: '/spam',
+    },
+    {
         key: 'signout',
         title: 'Sign Out',
         icon: 'signout',

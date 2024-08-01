@@ -38,17 +38,37 @@ func (s *SendEmail) Run(cmd *cobra.Command, args []string) error {
 	requestBody.SetBody(body)
 
 	var toRecipients []graphmodels.Recipientable
-	for _, r := range strings.Split(os.Getenv("EMAIL_RECIPIENT"), ",") {
+	for _, r := range strings.Split(os.Getenv("EMAIL_RECIPIENT_TO"), ",") {
 		emailAddress := strings.TrimSpace(r)
 		rep := graphmodels.NewRecipient()
 		addr := graphmodels.NewEmailAddress()
 		addr.SetAddress(&emailAddress)
 		rep.SetEmailAddress(addr)
-
 		toRecipients = append(toRecipients, rep)
 	}
-
 	requestBody.SetToRecipients(toRecipients)
+
+	var ccRecipients []graphmodels.Recipientable
+	for _, r := range strings.Split(os.Getenv("EMAIL_RECIPIENT_CC"), ",") {
+		emailAddress := strings.TrimSpace(r)
+		rep := graphmodels.NewRecipient()
+		addr := graphmodels.NewEmailAddress()
+		addr.SetAddress(&emailAddress)
+		rep.SetEmailAddress(addr)
+		ccRecipients = append(ccRecipients, rep)
+	}
+	requestBody.SetCcRecipients(ccRecipients)
+
+	var bccRecipients []graphmodels.Recipientable
+	for _, r := range strings.Split(os.Getenv("EMAIL_RECIPIENT_BCC"), ",") {
+		emailAddress := strings.TrimSpace(r)
+		rep := graphmodels.NewRecipient()
+		addr := graphmodels.NewEmailAddress()
+		addr.SetAddress(&emailAddress)
+		rep.SetEmailAddress(addr)
+		bccRecipients = append(bccRecipients, rep)
+	}
+	requestBody.SetBccRecipients(bccRecipients)
 
 	message, err := client.Me().Messages().Post(cmd.Context(), requestBody, nil)
 	if err != nil {

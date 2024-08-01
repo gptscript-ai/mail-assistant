@@ -72,6 +72,31 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) er
 	return err
 }
 
+const createSpamEmailRecord = `-- name: CreateSpamEmailRecord :exec
+INSERT INTO spam_emails (
+    subject, email_body, user_id, message_id
+) VALUES (
+    $1, $2, $3, $4
+)
+`
+
+type CreateSpamEmailRecordParams struct {
+	Subject   *string
+	EmailBody *string
+	UserID    pgtype.UUID
+	MessageID *string
+}
+
+func (q *Queries) CreateSpamEmailRecord(ctx context.Context, arg CreateSpamEmailRecordParams) error {
+	_, err := q.db.Exec(ctx, createSpamEmailRecord,
+		arg.Subject,
+		arg.EmailBody,
+		arg.UserID,
+		arg.MessageID,
+	)
+	return err
+}
+
 const createTask = `-- name: CreateTask :one
 INSERT INTO tasks (
     user_id, name, state, description, tool_definition, context, message_id, message_body, context_ids
@@ -129,7 +154,7 @@ INSERT INTO users (
 ) VALUES (
              $1, $2, $3, $4, $5
          )
-RETURNING id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at
+RETURNING id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at, check_spam
 `
 
 type CreateUserParams struct {
@@ -159,6 +184,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.SubscriptionExpireAt,
 		&i.SubscriptionDisabled,
 		&i.ExpireAt,
+		&i.CheckSpam,
 	)
 	return i, err
 }
@@ -170,6 +196,15 @@ WHERE id = $1
 
 func (q *Queries) DeleteContext(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteContext, id)
+	return err
+}
+
+const deleteSpamEmail = `-- name: DeleteSpamEmail :exec
+DELETE FROM spam_emails WHERE id = $1
+`
+
+func (q *Queries) DeleteSpamEmail(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSpamEmail, id)
 	return err
 }
 
@@ -303,6 +338,24 @@ func (q *Queries) GetMessageFromUserIDAndTaskID(ctx context.Context, arg GetMess
 	return items, nil
 }
 
+const getSpamEmail = `-- name: GetSpamEmail :one
+SELECT id, message_id, subject, email_body, user_id, created_at FROM spam_emails WHERE id = $1
+`
+
+func (q *Queries) GetSpamEmail(ctx context.Context, id pgtype.UUID) (SpamEmail, error) {
+	row := q.db.QueryRow(ctx, getSpamEmail, id)
+	var i SpamEmail
+	err := row.Scan(
+		&i.ID,
+		&i.MessageID,
+		&i.Subject,
+		&i.EmailBody,
+		&i.UserID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getTask = `-- name: GetTask :one
 SELECT id, name, description, tool_definition, context, created_at, user_id, message_id, message_body, conversation_id, context_ids, state FROM tasks
 WHERE id = $1 LIMIT 1
@@ -392,7 +445,7 @@ func (q *Queries) GetTaskFromUserID(ctx context.Context, userID pgtype.UUID) ([]
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at, check_spam FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -409,12 +462,13 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.SubscriptionExpireAt,
 		&i.SubscriptionDisabled,
 		&i.ExpireAt,
+		&i.CheckSpam,
 	)
 	return i, err
 }
 
 const getUserFromEmail = `-- name: GetUserFromEmail :one
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at, check_spam FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -431,12 +485,13 @@ func (q *Queries) GetUserFromEmail(ctx context.Context, email string) (User, err
 		&i.SubscriptionExpireAt,
 		&i.SubscriptionDisabled,
 		&i.ExpireAt,
+		&i.CheckSpam,
 	)
 	return i, err
 }
 
 const getUserFromSubscriptionID = `-- name: GetUserFromSubscriptionID :one
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at, check_spam FROM users
 WHERE subscription_id = $1 LIMIT 1
 `
 
@@ -453,6 +508,7 @@ func (q *Queries) GetUserFromSubscriptionID(ctx context.Context, subscriptionID 
 		&i.SubscriptionExpireAt,
 		&i.SubscriptionDisabled,
 		&i.ExpireAt,
+		&i.CheckSpam,
 	)
 	return i, err
 }
@@ -488,8 +544,39 @@ func (q *Queries) ListContextsForUser(ctx context.Context, userID pgtype.UUID) (
 	return items, nil
 }
 
+const listSpamEmails = `-- name: ListSpamEmails :many
+SELECT id, message_id, subject, email_body, user_id, created_at FROM spam_emails WHERE user_id = $1
+`
+
+func (q *Queries) ListSpamEmails(ctx context.Context, userID pgtype.UUID) ([]SpamEmail, error) {
+	rows, err := q.db.Query(ctx, listSpamEmails, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SpamEmail
+	for rows.Next() {
+		var i SpamEmail
+		if err := rows.Scan(
+			&i.ID,
+			&i.MessageID,
+			&i.Subject,
+			&i.EmailBody,
+			&i.UserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at FROM users
+SELECT id, name, email, token, refresh_token, subscription_id, subscription_expire_at, subscription_disabled, expire_at, check_spam FROM users
 ORDER BY name
 `
 
@@ -512,6 +599,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.SubscriptionExpireAt,
 			&i.SubscriptionDisabled,
 			&i.ExpireAt,
+			&i.CheckSpam,
 		); err != nil {
 			return nil, err
 		}
@@ -642,7 +730,8 @@ set token = $2,
     expire_at = $4,
     subscription_id = $5,
     subscription_expire_at = $6,
-    subscription_disabled = $7
+    subscription_disabled = $7,
+    check_spam = $8
 WHERE id = $1
 `
 
@@ -654,6 +743,7 @@ type UpdateUserParams struct {
 	SubscriptionID       *string
 	SubscriptionExpireAt pgtype.Timestamptz
 	SubscriptionDisabled *bool
+	CheckSpam            *bool
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -665,6 +755,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.SubscriptionID,
 		arg.SubscriptionExpireAt,
 		arg.SubscriptionDisabled,
+		arg.CheckSpam,
 	)
 	return err
 }

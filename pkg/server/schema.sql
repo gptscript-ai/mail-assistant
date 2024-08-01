@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     expire_at TIMESTAMPTZ
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTs check_spam boolean;
+
 CREATE TABLE IF NOT EXISTS tasks (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     name text NOT NULL,
@@ -56,4 +58,17 @@ CREATE TABLE IF NOT EXISTS contexts (
         FOREIGN KEY (user_id)
         REFERENCES users(id)
         ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS spam_emails (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    message_id text UNIQUE,
+    subject text,
+    email_body text,
+    user_id uuid,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
 );

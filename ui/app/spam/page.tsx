@@ -13,54 +13,45 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import ContextFormModal from '@/app/contexts/contextForm';
-import { ContextsTable } from '@/app/contexts/contextTable';
+import { SpamEmail } from '@/types/spam';
+import { SpamTable } from './spamTable';
+import SpamModal from './spamView';
 
 export default function Page(): React.JSX.Element {
-    const router = useRouter();
-    const page = 0;
     const rowsPerPage = 15;
-    const [contexts, setContexts] = useState<Context[]>([]);
+    const [spamEmails, setSpamEmails] = useState<SpamEmail[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
-    const [filteredContexts, setFilteredContexts] = useState(contexts);
+    const [filteredSpamEmails, setFilteredSpamEmails] = useState(spamEmails);
 
     useEffect(() => {
         if (searchQuery === '') {
-            setFilteredContexts(contexts);
+            setFilteredSpamEmails(spamEmails);
         } else {
-            setFilteredContexts(
-                contexts?.filter(
-                    (contexts) =>
-                        contexts.Name.toLowerCase().includes(
-                            searchQuery.toLowerCase()
-                        ) ||
-                        contexts.Description.toLowerCase().includes(
-                            searchQuery.toLowerCase()
-                        )
+            setFilteredSpamEmails(
+                spamEmails?.filter((spamEmails) =>
+                    spamEmails.Subject.toLowerCase().includes(
+                        searchQuery.toLowerCase()
+                    )
                 )
             );
         }
-    }, [searchQuery, contexts]);
+    }, [searchQuery, spamEmails]);
 
     const handleSearchChange = (event: any) => {
         setSearchQuery(event.target.value);
-    };
-
-    const handleAddContextClick = () => {
-        setIsModalVisible(true);
     };
 
     const handleCloseModal = () => {
         setIsModalVisible(false);
     };
 
-    const fetchContexts = async () => {
+    const fetchSpamEmails = async () => {
         try {
-            const response = await fetch('/api/contexts');
-            let contexts: Context[] = await response.json();
-            contexts = contexts?.sort((a, b) => {
+            const response = await fetch('/api/spams');
+            let spams: SpamEmail[] = await response.json();
+            spams = spams?.sort((a, b) => {
                 if (a.CreatedAt < b.CreatedAt) {
                     return 1;
                 }
@@ -69,55 +60,28 @@ export default function Page(): React.JSX.Element {
                 }
                 return 0;
             });
-            setContexts(contexts);
+            setSpamEmails(spams);
         } catch (error) {
             console.error(error);
         }
     };
 
-    const handleCreateContext = async (
-        name: string,
-        description: string,
-        content: string
-    ) => {
-        try {
-            const response = await fetch('/api/contexts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ name, description, content }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create context');
-            }
-
-            const data = await response.json();
-            console.log('Context created:', data);
-            fetchContexts();
-            setIsModalVisible(false);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const handleDeleteContext = async () => {
+    const handleDeleteSpamEmail = async () => {
         if (selected.size === 0) {
             alert('Must select at least one context to delete');
         }
         try {
             for (const id of Array.from(selected)) {
-                const response = await fetch(`/api/contexts/${id}`, {
+                const response = await fetch(`/api/spams/${id}`, {
                     method: 'DELETE',
                 });
 
                 if (!response.ok) {
                     throw new Error('Failed to delete context');
                 }
-                console.log('Context deleted: ', id);
+                console.log('Spam deleted: ', id);
             }
-            fetchContexts();
+            fetchSpamEmails();
             setSelected(new Set());
         } catch (error) {
             console.error(error);
@@ -125,38 +89,28 @@ export default function Page(): React.JSX.Element {
     };
 
     useEffect(() => {
-        fetchContexts();
-        setInterval(() => fetchContexts(), 10000);
+        fetchSpamEmails();
+        setInterval(() => fetchSpamEmails(), 10000);
     }, []);
 
     return (
         <Stack spacing={3}>
             <Stack direction="row" spacing={3}>
                 <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
-                    <Typography variant="h4">Rule Sets</Typography>
+                    <Typography variant="h4">Cold Email</Typography>
                 </Stack>
                 <Stack
                     direction="row"
                     spacing={1}
                     sx={{ alignItems: 'center' }}
                 >
-                    <Button
-                        startIcon={
-                            <PlusIcon fontSize="var(--icon-fontSize-md)" />
-                        }
-                        onClick={handleAddContextClick}
-                        variant="contained"
-                        color="primary"
-                    >
-                        Add
-                    </Button>
                     {selected.size > 0 && (
                         <Stack direction="row" spacing={1}>
                             <Button
                                 startIcon={
                                     <MinusIcon fontSize="var(--icon-fontSize-md)" />
                                 }
-                                onClick={handleDeleteContext}
+                                onClick={handleDeleteSpamEmail}
                                 variant="contained"
                                 color="error"
                             >
@@ -171,7 +125,7 @@ export default function Page(): React.JSX.Element {
                     value={searchQuery}
                     onChange={handleSearchChange}
                     fullWidth
-                    placeholder="Search rules"
+                    placeholder="Search cold emails"
                     startAdornment={
                         <InputAdornment position="start">
                             <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
@@ -180,29 +134,16 @@ export default function Page(): React.JSX.Element {
                     sx={{ maxWidth: '500px' }}
                 />
             </Card>
-            {filteredContexts && (
-                <ContextsTable
-                    rows={filteredContexts}
+            {filteredSpamEmails && (
+                <SpamTable
+                    rows={filteredSpamEmails}
                     rowsPerPage={rowsPerPage}
                     selectedIds={selected}
                     setSelectedIds={setSelected}
-                    fetchContexts={fetchContexts}
+                    fetchSpams={fetchSpamEmails}
                 />
             )}
-            <ContextFormModal
-                open={isModalVisible}
-                onClose={handleCloseModal}
-                onSubmit={handleCreateContext}
-                create={true}
-            />
+            <SpamModal open={isModalVisible} onClose={handleCloseModal} />
         </Stack>
     );
-}
-
-function applyPagination(
-    rows: Context[],
-    page: number,
-    rowsPerPage: number
-): Context[] {
-    return rows?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }

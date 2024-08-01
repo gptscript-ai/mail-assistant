@@ -214,6 +214,7 @@ func (h *Handler) saveUserInfo(ctx context.Context, state string, code string) (
 			SubscriptionID:       user.SubscriptionID,
 			SubscriptionExpireAt: user.SubscriptionExpireAt,
 			SubscriptionDisabled: user.SubscriptionDisabled,
+			CheckSpam:            user.CheckSpam,
 		}); err != nil {
 			return db.User{}, fmt.Errorf("failed to update user token: %w", err)
 		}

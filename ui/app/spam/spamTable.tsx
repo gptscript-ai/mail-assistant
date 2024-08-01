@@ -1,3 +1,4 @@
+import * as React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Checkbox from '@mui/material/Checkbox';
@@ -10,66 +11,63 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import dayjs from 'dayjs';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { Play as PlayIcon } from '@phosphor-icons/react/dist/ssr/Play';
 import { Trash as TrashIcon } from '@phosphor-icons/react/dist/ssr/Trash';
-import { Pencil as PencilIcon } from '@phosphor-icons/react/dist/ssr/Pencil';
+import { Note as NoteIcon } from '@phosphor-icons/react/dist/ssr/Note';
+import { Mailbox as MailboxIcon } from '@phosphor-icons/react/dist/ssr/Mailbox';
 
 import { useSelection } from '@/hooks/use-selection';
-import { useEffect, useMemo, useState } from 'react';
-import TaskFormModal from '@/app/tasks/taskForm';
+import { useEffect, useState } from 'react';
 import IconButton from '@mui/material/IconButton';
 import { ListItemText, Menu } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { useRouter } from 'next/navigation';
-import ContextFormDialog from '@/app/tasks/contextDialog';
-import Badge from '@mui/material/Badge';
-import { Task } from '@/types/task';
 import { format } from 'timeago.js';
+import { SpamEmail } from '@/types/spam';
+import SpamModal from './spamView';
 
 interface CustomersTableProps {
-    rows?: Task[];
+    rows?: SpamEmail[];
+    rowsPerPage?: number;
     selectedIds: Set<string>;
     setSelectedIds: any;
-    contexts: Context[];
-    fetchTasks: () => Promise<void>;
+    fetchSpams: () => Promise<void>;
 }
 
 function applyPagination(
-    rows: Task[],
+    rows: SpamEmail[],
     page: number,
     rowsPerPage: number
-): Task[] {
+): SpamEmail[] {
     return rows?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }
 
-export function TasksTable({
+export function SpamTable({
     rows = [],
     selectedIds,
     setSelectedIds,
-    contexts,
     // @ts-ignore
-    fetchTasks,
+    fetchSpams,
 }: CustomersTableProps): React.JSX.Element {
-    const rowIds = useMemo(() => {
-        return rows.map((task) => task.ID);
+    const rowIds = React.useMemo(() => {
+        return rows.map((context) => context.ID);
     }, [rows]);
 
-    const router = useRouter();
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(5);
     const { selectAll, deselectAll, selectOne, deselectOne, selected } =
         useSelection(rowIds, selectedIds, setSelectedIds, page, rowsPerPage);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-    const [editingTask, setEditingTask] = useState<Task>();
-    const [showContextDialog, setShowContextDialog] = useState(false);
-
-    const [renderedTasks, setRenderedTasks] = useState<Task[]>([]);
+    const [editingSpamEmails, setEditingSpamEmails] = useState<SpamEmail>();
+    const [renderedSpamEmails, setRenderedSpamEmails] = useState<SpamEmail[]>(
+        []
+    );
 
     useEffect(() => {
-        setRenderedTasks(applyPagination(rows, page, rowsPerPage));
+        setRenderedSpamEmails(applyPagination(rows, page, rowsPerPage));
     }, [rows, page, rowsPerPage]);
 
     const handleChangePage = (event: any, newPage: number) => {
@@ -83,84 +81,45 @@ export function TasksTable({
 
     const handleMenuOpen = (
         event: React.MouseEvent<HTMLElement>,
-        row: Task
+        row: SpamEmail
     ) => {
         setMenuAnchorEl(event.currentTarget);
-        setEditingTask(row);
+        setEditingSpamEmails(row);
     };
 
     const handleMenuClose = () => {
         setMenuAnchorEl(null);
     };
 
-    const handleOnCloseDialog = () => {
-        setShowContextDialog(false);
-    };
-
-    const handleRunTaskClick = (id: string) => {
-        setMenuAnchorEl(null);
-        if (
-            editingTask?.Context ||
-            (editingTask?.ContextIds && editingTask?.ContextIds.length > 0)
-        ) {
-            router.push(`/task/${editingTask.ID}`);
-        } else {
-            setShowContextDialog(true);
-        }
-    };
-
-    const handleUpdateTaskClick = () => {
+    const handleViewSpamClick = () => {
         setIsModalVisible(true);
         setMenuAnchorEl(null);
     };
 
-    const handleDeleteTaskClick = async () => {
-        const response = await fetch(`/api/tasks/${editingTask?.ID}`, {
+    const handleMovebackSpamClick = async (id: string) => {
+        const response = await fetch(`/api/spams/${id}/moveback`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            throw new Error('Failed to move back to inbox');
+        }
+        fetchSpams();
+    };
+
+    const handleDeleteSpamsClick = async (id: string) => {
+        const response = await fetch(`/api/spams/${id}`, {
             method: 'DELETE',
         });
 
         if (!response.ok) {
-            throw new Error('Failed to delete task');
+            throw new Error('Failed to delete context');
         }
-        await fetchTasks();
-        setMenuAnchorEl(null);
+        fetchSpams();
+        console.log('Spam deleted: ', id);
     };
 
     const handleCloseModal = () => {
         setIsModalVisible(false);
-    };
-
-    const handleUpdateTask = async (
-        name: string,
-        description: string,
-        context: string,
-        id?: string,
-        contextIds?: string[]
-    ) => {
-        const response = await fetch(`/api/tasks/${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ name, description, context, contextIds }),
-        });
-
-        if (!response.ok) {
-            console.error(new Error('Failed to create task'));
-        }
-        setIsModalVisible(false);
-        fetchTasks();
-    };
-
-    const onClickTaskName = (id: string) => {
-        router.push(`/task/${id}`);
-    };
-
-    const hasUnreadMessage = (task: Task): boolean => {
-        if (task.Messages && task.Messages.length > 0) {
-            return task.Messages.some((m) => !m.Read);
-        }
-        return false;
     };
 
     const selectedSome =
@@ -186,14 +145,13 @@ export function TasksTable({
                                     }}
                                 />
                             </TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Description</TableCell>
+                            <TableCell>Subject</TableCell>
                             <TableCell>Created</TableCell>
                             <TableCell></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {renderedTasks.map((row) => {
+                        {renderedSpamEmails.map((row) => {
                             const isSelected = selected?.has(row.ID);
 
                             return (
@@ -214,47 +172,27 @@ export function TasksTable({
                                             }}
                                         />
                                     </TableCell>
-                                    <TableCell
-                                        sx={{
-                                            cursor: 'pointer', // Change cursor to pointer to indicate clickable area
-                                            '&:hover': {
-                                                backgroundColor:
-                                                    'rgba(0, 0, 0, 0.1)', // Add hover effect for better UX
-                                            },
-                                        }}
-                                        onClick={() => onClickTaskName(row.ID)}
-                                    >
+                                    <TableCell>
                                         <Stack
                                             sx={{ alignItems: 'center' }}
                                             direction="row"
                                             spacing={2}
                                         >
                                             <Typography variant="subtitle2">
-                                                {row.Name}
+                                                {row.Subject}
                                             </Typography>
                                         </Stack>
                                     </TableCell>
-                                    <TableCell>{row.Description}</TableCell>
-                                    <TableCell sx={{ width: '150px' }}>
+                                    <TableCell>
                                         {format(row.CreatedAt, 'en_us')}
                                     </TableCell>
-
                                     <TableCell sx={{ width: '50px' }}>
                                         <IconButton
                                             onClick={(event) =>
                                                 handleMenuOpen(event, row)
                                             }
                                         >
-                                            <Badge
-                                                variant="dot"
-                                                color="error"
-                                                invisible={
-                                                    !hasUnreadMessage(row)
-                                                }
-                                                overlap="circular"
-                                            >
-                                                <MoreVertIcon />
-                                            </Badge>
+                                            <MoreVertIcon />
                                         </IconButton>
                                         <Menu
                                             anchorEl={menuAnchorEl}
@@ -262,29 +200,35 @@ export function TasksTable({
                                             onClose={handleMenuClose}
                                         >
                                             <MenuItem
+                                                onClick={handleViewSpamClick}
+                                            >
+                                                <ListItemIcon>
+                                                    <NoteIcon />
+                                                </ListItemIcon>
+                                                <ListItemText primary="View" />
+                                            </MenuItem>
+                                            <MenuItem
                                                 onClick={() =>
-                                                    handleRunTaskClick(row.ID)
+                                                    handleMovebackSpamClick(
+                                                        row.ID
+                                                    )
                                                 }
                                             >
                                                 <ListItemIcon>
-                                                    <PlayIcon />
+                                                    <MailboxIcon />
                                                 </ListItemIcon>
-                                                <ListItemText primary="Run" />
-                                            </MenuItem>
-                                            <MenuItem
-                                                onClick={handleUpdateTaskClick}
-                                            >
-                                                <ListItemIcon>
-                                                    <PencilIcon />
-                                                </ListItemIcon>
-                                                <ListItemText primary="Edit" />
+                                                <ListItemText primary="Move Back" />
                                             </MenuItem>
                                             <MenuItem
                                                 style={{
                                                     color: 'red',
                                                     fontWeight: 'bold',
                                                 }}
-                                                onClick={handleDeleteTaskClick}
+                                                onClick={() =>
+                                                    handleDeleteSpamsClick(
+                                                        row.ID
+                                                    )
+                                                }
                                             >
                                                 <ListItemIcon
                                                     style={{ color: 'red' }}
@@ -311,22 +255,11 @@ export function TasksTable({
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={[5, 10, 25]}
             />
-            <TaskFormModal
+            <SpamModal
                 open={isModalVisible}
                 onClose={handleCloseModal}
-                onSubmit={handleUpdateTask}
-                task={editingTask}
-                contexts={contexts}
-                create={false}
+                spam={editingSpamEmails}
             />
-            {editingTask && (
-                <ContextFormDialog
-                    open={showContextDialog}
-                    onClose={handleOnCloseDialog}
-                    contexts={contexts}
-                    task={editingTask}
-                ></ContextFormDialog>
-            )}
         </Card>
     );
 }

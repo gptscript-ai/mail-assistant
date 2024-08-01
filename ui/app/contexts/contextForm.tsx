@@ -124,14 +124,6 @@ const ContextFormModal: React.FC<ContextFormModalProps> = ({
                         />
                         <Stack direction="row" spacing={2}>
                             <Button
-                                type="submit"
-                                fullWidth
-                                variant="contained"
-                                sx={{ mt: 3, mb: 2 }}
-                            >
-                                {create ? 'Create' : 'Update'}
-                            </Button>
-                            <Button
                                 type="reset"
                                 fullWidth
                                 color="error"
@@ -140,6 +132,14 @@ const ContextFormModal: React.FC<ContextFormModalProps> = ({
                                 sx={{ mt: 3, mb: 2 }}
                             >
                                 Close
+                            </Button>
+                            <Button
+                                type="submit"
+                                fullWidth
+                                variant="contained"
+                                sx={{ mt: 3, mb: 2 }}
+                            >
+                                {create ? 'Create' : 'Update'}
                             </Button>
                         </Stack>
                     </Box>

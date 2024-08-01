@@ -43,6 +43,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [userMessages, setUserMessages] = useState<string[]>([]);
     const [messageIndex, setMessageIndex] = useState(-1);
+    const [rows, setRows] = useState(1);
 
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
@@ -386,7 +387,7 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                                 variant="outlined"
                                 fullWidth
                                 multiline
-                                rows={1}
+                                rows={rows}
                                 value={message}
                                 onChange={(e) => {
                                     setMessage(e.target.value);
@@ -394,13 +395,14 @@ export const Run: React.FC<TaskFormModalProps> = ({ id }) => {
                                 placeholder="Type your message"
                                 onKeyDown={(e) => {
                                     if (e.shiftKey && e.key === 'Enter') {
+                                        setRows((r) => r + 1);
                                         return true;
                                     }
                                     if (e.key === 'Enter') {
                                         sendMessage();
+                                        setRows(1);
                                     }
                                     if (e.key === 'ArrowUp') {
-                                        console.log(messageIndex);
                                         setMessageIndex((prevIndex) => {
                                             const newIndex = Math.min(
                                                 prevIndex + 1,

@@ -17,27 +17,51 @@ const Account: React.FC = () => {
     const [open, setOpen] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [subscriptionEnabled, setSubscriptionEnabled] = useState(false);
+    const [checkSpam, setCheckSpam] = useState(false);
 
     useEffect(() => {
         getUser()
             .then((user) => {
                 setUser(user);
                 setSubscriptionEnabled(!user.subscriptionDisabled);
+                setCheckSpam(user.checkSpam ?? false);
             })
             .catch();
     }, []);
 
-    const handleToggleSubscription = async () => {
+    const handleToggleSubscription = async (
+        event: React.ChangeEvent<HTMLInputElement>,
+        checked: boolean
+    ) => {
         const response = await fetch('/api/me', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                subscriptionDisabled: subscriptionEnabled,
+                subscriptionDisabled: !checked,
+                checkSpam: checkSpam,
             }),
         });
-        setSubscriptionEnabled(!subscriptionEnabled);
+        setSubscriptionEnabled(checked);
+        setOpen(true);
+    };
+
+    const handleToggleCheckSpam = async (
+        event: React.ChangeEvent<HTMLInputElement>,
+        checked: boolean
+    ) => {
+        const response = await fetch('/api/me', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                subscriptionDisabled: !subscriptionEnabled,
+                checkSpam: checked,
+            }),
+        });
+        setCheckSpam(checked);
         setOpen(true);
     };
 
@@ -119,6 +143,25 @@ const Account: React.FC = () => {
                                                     }
                                                     onChange={
                                                         handleToggleSubscription
+                                                    }
+                                                    color="primary"
+                                                />
+                                            </Stack>
+                                        </Tooltip>
+                                        <Tooltip title="Enable cold email dectection and move it to SPAM">
+                                            <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                justifyContent="space-between"
+                                                width="100%"
+                                            >
+                                                <Typography variant="h6">
+                                                    Cold Email Detection
+                                                </Typography>
+                                                <Switch
+                                                    checked={checkSpam}
+                                                    onChange={
+                                                        handleToggleCheckSpam
                                                     }
                                                     color="primary"
                                                 />
