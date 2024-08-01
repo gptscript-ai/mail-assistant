@@ -126,87 +126,85 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		subject := *message.GetSubject()
 		emailContent := *message.GetBody().GetContent()
 
-		if user.CheckSpam != nil && *user.CheckSpam {
-			// Once we identified te the email is related to meeting, use AI to check whether email belongs to cold email. If so, move it to spam
-			if _, ok := SkipEmails[messageID]; !ok {
-				checkSpamRun, err := gptClient.Evaluate(context.Background(), gptscript.Options{}, gptscript.ToolDef{
-					Instructions: fmt.Sprintf(checkSpamTemplatePrompt, emailContent, email, subject, user.Email),
-				})
-				if err != nil {
-					logrus.Error(fmt.Errorf("failed to run gptscript to check email content to detect spam: %w", err))
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				checkSpamRunOutput, err := checkSpamRun.Text()
-				if err != nil {
-					logrus.Error(fmt.Errorf("failed to run gptscript to check email content to detect spam: %w", err))
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-
-				if strings.ToLower(checkSpamRunOutput) == "yes" {
-					logrus.Infof("Mark message %v as Spam cold email, moving to Cold Email folder", messageID)
-
-					folders, err := client.Me().MailFolders().Get(r.Context(), nil)
-					if err != nil {
-						logrus.Error(fmt.Errorf("failed to get folder list: %w", err))
-						w.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-					var coldEmailFolderID string
-					for _, folder := range folders.GetValue() {
-						if folder.GetDisplayName() != nil && *folder.GetDisplayName() == "Cold Emails" {
-							coldEmailFolderID = *folder.GetId()
-							break
-						}
-					}
-
-					if coldEmailFolderID == "" {
-						logrus.Error("Failed to find cold email folder")
-						return
-					}
-
-					requestBody := graphusers.NewItemMailfoldersItemMessagesItemMovePostRequestBody()
-					requestBody.SetDestinationId(&coldEmailFolderID)
-					newMessage, err := client.Me().Messages().ByMessageId(messageID).Move().Post(r.Context(), requestBody, nil)
-					if err != nil {
-						logrus.Error("Failed to move message to junk items")
-						w.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-
-					if err := h.queries.CreateSpamEmailRecord(r.Context(), db.CreateSpamEmailRecordParams{
-						Subject:   &subject,
-						EmailBody: &emailContent,
-						UserID:    user.ID,
-						MessageID: newMessage.GetId(),
-					}); err != nil {
-						logrus.Error(fmt.Errorf("failed to create spam email record: %w", err))
-						w.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-
-					if err := h.queries.CreateMessage(r.Context(), db.CreateMessageParams{
-						MessageID: newMessage.GetId(),
-						Content:   &[]string{fmt.Sprint("Mark incoming email as SPAM")}[0],
-						UserID:    user.ID,
-						TaskID: pgtype.UUID{
-							Valid: false,
-						},
-					}); err != nil {
-						logrus.Error(fmt.Errorf("failed to create spam email message: %w", err))
-						w.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-					return
-				}
-			}
-		}
-
 		task, err := h.queries.GetTaskFromConversationID(context.Background(), message.GetConversationId())
 		if errors.Is(err, pgx.ErrNoRows) {
-			// if we can't find task, let LLM decide whether to create a new task based on email content.
+			if user.CheckSpam != nil && *user.CheckSpam {
+				// Once we identified te the email is related to meeting, use AI to check whether email belongs to cold email. If so, move it to spam
+				if _, ok := SkipEmails[messageID]; !ok {
+					checkSpamRun, err := gptClient.Evaluate(context.Background(), gptscript.Options{}, gptscript.ToolDef{
+						Instructions: fmt.Sprintf(checkSpamTemplatePrompt, emailContent, email, subject, user.Email),
+					})
+					if err != nil {
+						logrus.Error(fmt.Errorf("failed to run gptscript to check email content to detect spam: %w", err))
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					checkSpamRunOutput, err := checkSpamRun.Text()
+					if err != nil {
+						logrus.Error(fmt.Errorf("failed to run gptscript to check email content to detect spam: %w", err))
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
 
+					if strings.ToLower(checkSpamRunOutput) == "yes" {
+						logrus.Infof("Mark message %v as Spam cold email, moving to Cold Email folder", messageID)
+
+						folders, err := client.Me().MailFolders().Get(r.Context(), nil)
+						if err != nil {
+							logrus.Error(fmt.Errorf("failed to get folder list: %w", err))
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						var coldEmailFolderID string
+						for _, folder := range folders.GetValue() {
+							if folder.GetDisplayName() != nil && *folder.GetDisplayName() == "Cold Emails" {
+								coldEmailFolderID = *folder.GetId()
+								break
+							}
+						}
+
+						if coldEmailFolderID == "" {
+							logrus.Error("Failed to find cold email folder")
+							return
+						}
+
+						requestBody := graphusers.NewItemMailfoldersItemMessagesItemMovePostRequestBody()
+						requestBody.SetDestinationId(&coldEmailFolderID)
+						newMessage, err := client.Me().Messages().ByMessageId(messageID).Move().Post(r.Context(), requestBody, nil)
+						if err != nil {
+							logrus.Error("Failed to move message to junk items")
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+
+						if err := h.queries.CreateSpamEmailRecord(r.Context(), db.CreateSpamEmailRecordParams{
+							Subject:   &subject,
+							EmailBody: &emailContent,
+							UserID:    user.ID,
+							MessageID: newMessage.GetId(),
+						}); err != nil {
+							logrus.Error(fmt.Errorf("failed to create spam email record: %w", err))
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+
+						if err := h.queries.CreateMessage(r.Context(), db.CreateMessageParams{
+							MessageID: newMessage.GetId(),
+							Content:   &[]string{fmt.Sprint("Mark incoming email as SPAM")}[0],
+							UserID:    user.ID,
+							TaskID: pgtype.UUID{
+								Valid: false,
+							},
+						}); err != nil {
+							logrus.Error(fmt.Errorf("failed to create spam email message: %w", err))
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						return
+					}
+				}
+			}
+			// if we can't find task, let LLM decide whether to create a new task based on email content.
 			run, err := gptClient.Evaluate(context.Background(), gptscript.Options{}, gptscript.ToolDef{
 				Instructions: fmt.Sprintf(`Given email subject: %v\, Check if this is related to a meeting. Answer yes or no. \n `, subject),
 			})
